@@ -8,6 +8,8 @@ ball qo'yilgan holda ko'radi.
 - **Frontend:** Vue 3 SPA (vue-router + Pinia, Laravel Mix bilan build qilinadi)
 - **Backend:** Laravel API (`routes/api.php`), Sanctum token auth
 - **Saralash:** `config/driver_scoring.php` — kriteriyalar kodda emas, konfiguratsiyada
+- **Kompaniya tekshiruvi:** FMCSA (MC/DOT) + rasmiy kontaktga yuboriladigan kod
+- **Hujjatlar:** CDL / medical card rasmi berkitilib, watermark bilan PDF qilinadi
 
 ---
 
@@ -34,10 +36,97 @@ Demo akkauntlar:
 
 | Rol | Email | Parol |
 |---|---|---|
+| Admin | `admin@example.com` | `password` |
 | Kompaniya | `carrier@example.com` | `password` |
 | Driver | `driver@example.com` | `password` |
 
 Testlar: `./vendor/bin/phpunit`
+
+---
+
+## Kompaniya ro'yxatdan o'tishi (FMCSA)
+
+Kompaniya MC yoki DOT raqamini kiritadi. Tizim FMCSA bazasidan tekshiradi:
+
+1. **Topilmasa** yoki **allowed-to-operate emas** bo'lsa — ro'yxatdan o'tkazilmaydi
+   va hech qanday yozuv saqlanmaydi.
+2. Topilsa — kompaniya nomi FMCSA'dagi rasmiy nomdan olinadi (foydalanuvchi
+   yozganidan emas).
+3. Tasdiqlash kodi **FMCSA'da ro'yxatdan o'tgan telefon yoki emailga** yuboriladi.
+   Foydalanuvchiga faqat maskalangan ko'rinishi ko'rsatiladi (`****4567`).
+4. Kod tasdiqlangunicha kompaniya ilovadan foydalana olmaydi
+   (`carrier.fmcsa` middleware, `403 fmcsa_verification_required`).
+5. Keyinchalik authority to'xtatilsa kirish yopiladi (`403 fmcsa_not_active`).
+   Admin `POST /api/admin/carriers/{carrier}/recheck` bilan qayta tekshiradi.
+
+Sozlash (`.env`):
+
+```env
+FMCSA_DRIVER=fake              # lokal ishlab chiqish uchun, tashqi so'rov yo'q
+# FMCSA_DRIVER=qcmobile        # production
+# FMCSA_WEB_KEY=...            # QCDevsite'da bepul olinadi
+# FMCSA_CENSUS_DATASET=...     # telefon/email uchun (QCMobile ularni bermaydi)
+# FMCSA_REQUIRE_ACTIVE=true
+```
+
+`FMCSA_DRIVER=fake` da qoida: DOT `0` bilan boshlansa — topilmadi,
+`9` bilan boshlansa — nofaol, qolgani — faol.
+
+---
+
+## Hujjatlar: berkitish va watermark
+
+Driver CDL / medical card'ni rasmga oladi va maxfiy joylarni sichqoncha bilan
+belgilaydi. Tizim:
+
+1. EXIF bo'yicha buradi va kichraytiradi
+2. Belgilangan joylarni **qaytarib bo'lmaydigan** qilib berkitadi
+3. Butun rasm bo'ylab qiya watermark yozadi (rasmning o'ziga, PDF ustiga emas)
+4. PDF qilib private diskda saqlaydi
+
+Asl rasm hech qachon tarqatilmaydi. PDF'ni faqat driverning o'zi, unga ariza
+kelgan kompaniya va admin ko'ra oladi (`GET /api/documents/{id}/pdf`).
+
+```env
+DOCUMENTS_WATERMARK=recruiting   # production'da almashtiriladi
+DOCUMENTS_REDACTION=pixelate     # yoki blackout
+DOCUMENTS_DISK=local
+```
+
+> Oddiy blur ishlatilmaydi — blur qilingan matnni tiklash mumkin. `pixelate`
+> sohani juda kichik o'lchamga siqib qaytadan cho'zadi, ya'ni asl piksellar
+> butunlay yo'qoladi.
+
+---
+
+## Ish munosabati qoidalari
+
+- **CDL sanasi va tajriba**: ko'rsatilgan tajriba CDL olingan sanadan oshib
+  ketsa profil saqlanmaydi (`ExperienceMatchesCdlIssueDate`, 0.5 yil tolerans).
+- **Eksklyuzivlik**: bitta kompaniya driverni `hired` qilsa, driver o'sha
+  kompaniyaga biriktiriladi, boshqa ochiq arizalari yopiladi va boshqa
+  kompaniya uni ishga ola olmaydi.
+- **Baholar**: driver kompaniyaga, kompaniya driverga baho qoldiradi — faqat
+  ariza `hired` yoki `rejected` bo'lgandan keyin, har hamkorlik uchun bir marta.
+- **Blacklist**: 3 ta qoniqarsiz baho (1–2 yulduz) to'plagan tomon — driver
+  bo'ladimi, kompaniya bo'ladimi — blacklist'ga tushadi.
+- **Apelyatsiya**: blacklist'dagi tomon apelyatsiya beradi, admin qaror
+  chiqaradi. Qabul qilinsa eski baholar qayta hisoblanmaydi (aks holda darrov
+  qaytib tushardi), lekin baholarning o'zi ko'rinib turaveradi.
+
+```env
+REPUTATION_NEGATIVE_AT=2         # shu balldan past = qoniqarsiz
+REPUTATION_BLACKLIST_AFTER=3     # nechta qoniqarsizdan keyin blacklist
+```
+
+---
+
+## Admin
+
+`role=admin` foydalanuvchi: platforma statistikasi, foydalanuvchilarni
+bloklash/blokdan chiqarish (bloklanganda barcha tokenlari ham bekor qilinadi),
+apelyatsiyalarni ko'rib chiqish, qo'lda blacklist qo'yish/olish, nomaqbul
+review'ni olib tashlash, kompaniyani FMCSA bo'yicha qayta tekshirish.
 
 ---
 
@@ -110,6 +199,8 @@ Ustunlik tartibi: `config` → carrier override → job override.
 | POST | `/api/auth/send-code` · `/api/auth/verify-code` | telefon yoki email tasdiqlash |
 | GET | `/api/scoring/criteria` | UI kriteriyalarni shu yerdan oladi |
 | GET/PUT | `/api/driver/profile` | driver o'z profili + o'z-o'ziga baho |
+| GET/POST/DELETE | `/api/driver/documents` | CDL / medical card |
+| GET | `/api/documents/{id}/pdf` | berkitilgan PDF (huquq tekshiriladi) |
 | GET | `/api/driver/jobs` | vakansiya qidirish |
 | POST | `/api/driver/jobs/{job}/apply` | ariza (tasdiqlangan akkaunt talab qilinadi) |
 | GET | `/api/driver/applications` | arizalar tarixi (ball ko'rsatilmaydi) |
@@ -119,6 +210,11 @@ Ustunlik tartibi: `config` → carrier override → job override.
 | GET | `/api/carrier/jobs/{job}/applicants` | **ball bo'yicha saralangan arizachilar** |
 | GET/POST | `/api/carrier/drivers` | **driver bazasi** + qo'lda kiritish |
 | PUT | `/api/carrier/scoring/overrides` | kriteriya vaznlari |
+| GET | `/api/auth/carrier/channels` | FMCSA kontaktlari (maskalangan) |
+| POST | `/api/auth/carrier/send-code` · `/verify-code` | FMCSA tasdiqlash |
+| GET/POST | `/api/reviews` | ikki tomonlama baho |
+| GET/POST | `/api/appeals` | blacklist apelyatsiyasi |
+| GET | `/api/admin/overview` · `/users` · `/appeals` | admin paneli |
 
 Obuna talab qiladigan yo'llar (`applicants`, `drivers`) obunasiz `402` qaytaradi,
 tasdiqlanmagan akkaunt `403` oladi.
@@ -130,8 +226,18 @@ tasdiqlanmagan akkaunt `403` oladi.
 Quyidagilar strukturasi tayyor, faqat tashqi xizmat ulanishi kerak:
 
 - **SMS/email yuborish** — hozir tasdiqlash kodi log'ga yoziladi va `APP_DEBUG=true`
-  bo'lganda javobda qaytariladi (`AuthController::issueCode`).
+  bo'lganda javobda qaytariladi (`AuthController::issueCode`,
+  `CarrierVerificationService::issueCode`). Twilio/SES ulanganda faqat shu ikki
+  metod o'zgaradi.
+- **FMCSA production kaliti** — `FMCSA_WEB_KEY` va census dataset id.
 - **To'lov (Stripe)** — obuna hozir `CarrierController::subscribe` da qo'lda
   aktivlashtiriladi.
-- **Resume/fayl yuklash** — `driver_profiles.resume_path` maydoni bor, upload yo'q.
+- **MVR** — provayder tanlanishi kerak (SambaSafety'da sandbox bor). Oxirgi
+  30 kun ichidagi MVR qayta ishlatilishi, state bo'yicha narxlar va yangi MVR
+  buyurtma qilish shu integratsiyaga bog'liq.
+- **Aviabilet** — Expedia Rapid API faqat mehmonxona beradi, reys bermaydi.
+  Duffel yoki Amadeus Self-Service kerak bo'ladi.
+- **Kompaniya reputatsiyasi** — MC/DOT bo'yicha internetdagi sharhlarni yig'ish
+  (Google Places API ishlaydi; Indeed/Glassdoor'da ochiq API yo'q).
+- **Onboarding qadamlari** — company driver uchun qadamlar ro'yxati.
 - **CSV import** — `driver_profiles.source` da `csv` qiymati ko'zda tutilgan.

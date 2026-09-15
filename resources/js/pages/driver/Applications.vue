@@ -20,6 +20,7 @@
                             <th>Kompaniya</th>
                             <th>Sana</th>
                             <th>Holat</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -28,29 +29,45 @@
                             <td class="text-muted">{{ application.job_post?.carrier?.company_name }}</td>
                             <td class="text-muted small">{{ date(application.created_at) }}</td>
                             <td><StatusBadge :status="application.status" :options="statuses" /></td>
+                            <td class="text-end">
+                                <button v-if="canReview(application)" class="btn btn-sm btn-outline-primary"
+                                        @click="reviewing = application">
+                                    Kompaniyaga baho
+                                </button>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
             </div>
         </div>
+
+        <ReviewModal
+            v-if="reviewing"
+            :application-id="reviewing.id"
+            :title="`${reviewing.job_post ? reviewing.job_post.carrier.company_name : 'Kompaniya'} haqida baho`"
+            @close="reviewing = null"
+            @saved="onReviewed"
+        />
     </div>
 </template>
 
 <script>
 import api from '../../api';
 import AlertBox from '../../components/AlertBox.vue';
+import ReviewModal from '../../components/ReviewModal.vue';
 import StatusBadge from '../../components/StatusBadge.vue';
 import { APPLICATION_STATUSES } from '../../constants';
 
 export default {
     name: 'DriverApplicationsPage',
 
-    components: { AlertBox, StatusBadge },
+    components: { AlertBox, ReviewModal, StatusBadge },
 
     data() {
         return {
             applications: [],
             statuses: APPLICATION_STATUSES,
+            reviewing: null,
             loading: true,
             error: null,
         };
@@ -70,6 +87,16 @@ export default {
             } finally {
                 this.loading = false;
             }
+        },
+
+        /** Baho faqat hamkorlik yakunlangandan keyin qoldiriladi. */
+        canReview(application) {
+            return ['hired', 'rejected'].includes(application.status);
+        },
+
+        onReviewed() {
+            this.reviewing = null;
+            this.load();
         },
 
         date(value) {

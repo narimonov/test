@@ -56,9 +56,11 @@ class DriverProfile extends Model
         'medical_card_expires_at'  => 'date:Y-m-d',
         'available_from'           => 'date:Y-m-d',
         'dui_last_at'              => 'date:Y-m-d',
+        'hired_at'                 => 'datetime',
+        'blacklisted_at'           => 'datetime',
     ];
 
-    protected $appends = ['full_name'];
+    protected $appends = ['full_name', 'is_hired', 'is_blacklisted'];
 
     public function user()
     {
@@ -73,6 +75,32 @@ class DriverProfile extends Model
     public function applications()
     {
         return $this->hasMany(Application::class);
+    }
+
+    public function documents()
+    {
+        return $this->hasMany(DriverDocument::class);
+    }
+
+    public function reviews()
+    {
+        return $this->hasMany(Review::class)->where('subject_type', Review::SUBJECT_DRIVER);
+    }
+
+    public function hiredCarrier()
+    {
+        return $this->belongsTo(Carrier::class, 'hired_carrier_id');
+    }
+
+    /** Bitta kompaniya yollagan driverni boshqasi yollay olmaydi. */
+    public function getIsHiredAttribute(): bool
+    {
+        return $this->hired_carrier_id !== null;
+    }
+
+    public function getIsBlacklistedAttribute(): bool
+    {
+        return $this->blacklisted_at !== null;
     }
 
     public function getFullNameAttribute(): string

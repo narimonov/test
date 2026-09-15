@@ -11,12 +11,19 @@ export const useAuthStore = defineStore('auth', {
     getters: {
         isAuthenticated: (state) => !!state.user,
         isDriver: (state) => state.user?.role === 'driver',
-        isCarrier: (state) => ['carrier', 'admin'].includes(state.user?.role),
+        isCarrier: (state) => state.user?.role === 'carrier',
+        isAdmin: (state) => state.user?.role === 'admin',
+        isFmcsaVerified: (state) => !!state.user?.fmcsa_verified,
         isVerified: (state) => !!state.user?.is_verified,
         hasSubscription: (state) => !!state.user?.carrier?.has_active_subscription,
         homeRoute() {
             if (!this.user) return { name: 'landing' };
-            return this.isCarrier ? { name: 'carrier.dashboard' } : { name: 'driver.jobs' };
+            if (this.isAdmin) return { name: 'admin.overview' };
+            if (this.isCarrier) {
+                return this.isFmcsaVerified ? { name: 'carrier.dashboard' } : { name: 'carrier.verify' };
+            }
+
+            return { name: 'driver.jobs' };
         },
     },
 

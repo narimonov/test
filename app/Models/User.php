@@ -50,9 +50,10 @@ class User extends Authenticatable
         'email_verified_at'            => 'datetime',
         'phone_verified_at'            => 'datetime',
         'verification_code_expires_at' => 'datetime',
+        'blocked_at'                   => 'datetime',
     ];
 
-    protected $appends = ['is_verified'];
+    protected $appends = ['is_verified', 'is_blocked'];
     public function clients()
     {
         return $this->hasMany(Client::class);
@@ -84,5 +85,15 @@ class User extends Authenticatable
     public function isCarrier(): bool
     {
         return $this->role === self::ROLE_CARRIER;
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === self::ROLE_ADMIN;
+    }
+
+    public function getIsBlockedAttribute(): bool
+    {
+        return $this->blocked_at !== null;
     }
 }

@@ -11,6 +11,10 @@ class Application extends Model
 
     protected $guarded = ['id'];
 
+    protected $attributes = [
+        'status' => 'applied',
+    ];
+
     protected $casts = [
         'score_breakdown' => 'array',
         'knockouts'       => 'array',

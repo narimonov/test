@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Carrier;
+use App\Services\CarrierVerificationService;
 use App\Models\DriverProfile;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -19,45 +20,108 @@ class AuthController extends Controller
      * Ro'yxatdan o'tish. role = driver | carrier
      * Driver bo'lsa bo'sh profil, carrier bo'lsa kompaniya yozuvi yaratiladi.
      */
-    public function register(Request $request)
+    public function register(Request $request, CarrierVerificationService $carrierVerification)
     {
         $data = $request->validate([
-            'name'         => ['required', 'string', 'max:255'],
-            'email'        => ['required', 'email', 'max:255', 'unique:users,email'],
-            'phone'        => ['nullable', 'string', 'max:30', 'unique:users,phone'],
-            'password'     => ['required', 'string', 'min:8', 'confirmed'],
-            'role'         => ['required', Rule::in([User::ROLE_DRIVER, User::ROLE_CARRIER])],
-            'company_name' => ['required_if:role,carrier', 'nullable', 'string', 'max:255'],
+            'name'     => ['required', 'string', 'max:255'],
+            'email'    => ['required', 'email', 'max:255', 'unique:users,email'],
+            'phone'    => ['nullable', 'string', 'max:30', 'unique:users,phone'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'role'     => ['required', Rule::in([User::ROLE_DRIVER, User::ROLE_CARRIER])],
         ]);
 
+        if ($data['role'] !== User::ROLE_CARRIER) {
+            return $this->registerDriver($data);
+        }
+
+        // Kompaniya uchun MC yoki DOT raqamlardan hech bo'lmasa bittasi shart.
+        // Alohida tekshiriladi, aks holda driver ro'yxatdan o'tishida ham talab qilinardi.
+        $identifiers = $request->validate([
+            'dot_number' => ['required_without:mc_number', 'nullable', 'string', 'max:20'],
+            'mc_number'  => ['required_without:dot_number', 'nullable', 'string', 'max:20'],
+        ]);
+
+        return $this->registerCarrier($data + $identifiers, $carrierVerification);
+    }
+
+    /**
+     * Kompaniya: avval FMCSA tekshiruvi, keyin akkaunt.
+     *
+     * Tasdiqlash kodi FMCSA'da ro'yxatdan o'tgan telefon/emailga yuboriladi —
+     * foydalanuvchi kiritganiga emas. Shuning uchun begona odam kompaniya
+     * nomidan ro'yxatdan o'ta olmaydi.
+     */
+    protected function registerCarrier(array $data, CarrierVerificationService $carrierVerification)
+    {
+        // Akkaunt yaratishdan oldin tekshiramiz — FMCSA rad qilsa hech narsa saqlanmaydi.
+        $record = $carrierVerification->lookup($data['dot_number'] ?? null, $data['mc_number'] ?? null);
+        $carrierVerification->assertNotAlreadyRegistered($record);
+
+        if (! $record->hasContact()) {
+            throw ValidationException::withMessages([
+                'dot_number' => ['FMCSA bazasida bu kompaniya uchun telefon/email yo\'q. '
+                    . 'Qo\'lda tekshiruv uchun support bilan bog\'laning.'],
+            ]);
+        }
+
+        $carrier = DB::transaction(function () use ($data, $record, $carrierVerification) {
+            $user = User::create([
+                'name'     => $data['name'],
+                'email'    => $data['email'],
+                'phone'    => $data['phone'] ?? null,
+                'password' => Hash::make($data['password']),
+                'role'     => User::ROLE_CARRIER,
+            ]);
+
+            $carrier = Carrier::create([
+                'user_id'       => $user->id,
+                'company_name'  => $record->displayName(),
+                'contact_name'  => $data['name'],
+                'contact_phone' => $data['phone'] ?? null,
+            ]);
+
+            return $carrierVerification->applyRecord($carrier, $record);
+        });
+
+        return response()->json([
+            'token'    => $carrier->user->createToken('spa')->plainTextToken,
+            'user'     => $this->userPayload($carrier->user->fresh()),
+            'fmcsa'    => [
+                'legal_name'         => $record->legalName,
+                'dba_name'           => $record->dbaName,
+                'dot_number'         => $record->dotNumber,
+                'allowed_to_operate' => $record->allowedToOperate,
+                'city'               => $record->city,
+                'state'              => $record->state,
+            ],
+            // Kod qaysi kanalga yuborilishini foydalanuvchi tanlaydi.
+            'channels' => $carrierVerification->availableChannels($carrier),
+            'message'  => 'Kompaniya FMCSA bo\'yicha tasdiqlandi. Endi FMCSA\'dagi '
+                . 'rasmiy kontaktga yuboriladigan kodni tasdiqlang.',
+        ], 201);
+    }
+
+    protected function registerDriver(array $data)
+    {
         $user = DB::transaction(function () use ($data) {
             $user = User::create([
                 'name'     => $data['name'],
                 'email'    => $data['email'],
                 'phone'    => $data['phone'] ?? null,
                 'password' => Hash::make($data['password']),
-                'role'     => $data['role'],
+                'role'     => User::ROLE_DRIVER,
             ]);
 
-            if ($user->isCarrier()) {
-                Carrier::create([
-                    'user_id'      => $user->id,
-                    'company_name' => $data['company_name'],
-                    'contact_name' => $data['name'],
-                    'contact_phone' => $data['phone'] ?? null,
-                ]);
-            } else {
-                $parts = preg_split('/\s+/', trim($data['name']), 2);
+            $parts = preg_split('/\s+/', trim($data['name']), 2);
 
-                DriverProfile::create([
-                    'user_id'    => $user->id,
-                    'source'     => 'self_signup',
-                    'first_name' => $parts[0],
-                    'last_name'  => $parts[1] ?? '',
-                    'email'      => $data['email'],
-                    'phone'      => $data['phone'] ?? null,
-                ]);
-            }
+            DriverProfile::create([
+                'user_id'    => $user->id,
+                'source'     => 'self_signup',
+                'first_name' => $parts[0],
+                'last_name'  => $parts[1] ?? '',
+                'email'      => $data['email'],
+                'phone'      => $data['phone'] ?? null,
+            ]);
 
             return $user;
         });
@@ -84,6 +148,13 @@ class AuthController extends Controller
             throw ValidationException::withMessages([
                 'email' => ['Email yoki parol noto\'g\'ri.'],
             ]);
+        }
+
+        if ($user->is_blocked) {
+            return response()->json([
+                'message' => 'Akkauntingiz bloklangan.' . ($user->blocked_reason ? ' Sabab: ' . $user->blocked_reason : ''),
+                'code'    => 'account_blocked',
+            ], 403);
         }
 
         return response()->json([
@@ -164,7 +235,61 @@ class AuthController extends Controller
         ]);
     }
 
+    /**
+     * Kompaniya uchun: kod qaysi FMCSA kontaktlariga yuborilishi mumkin.
+     */
+    public function carrierChannels(Request $request, CarrierVerificationService $service)
+    {
+        $carrier = $this->carrierOrFail($request);
+
+        return response()->json([
+            'channels'    => $service->availableChannels($carrier),
+            'is_verified' => $carrier->is_fmcsa_verified,
+            'company'     => [
+                'legal_name'         => $carrier->fmcsa_legal_name,
+                'dot_number'         => $carrier->dot_number,
+                'allowed_to_operate' => $carrier->allowed_to_operate,
+            ],
+        ]);
+    }
+
+    /** Kompaniya uchun: kodni FMCSA kontaktiga yuborish. */
+    public function sendCarrierCode(Request $request, CarrierVerificationService $service)
+    {
+        $data = $request->validate([
+            'channel' => ['required', Rule::in(['phone', 'email'])],
+        ]);
+
+        return response()->json([
+            'message'      => 'Kod FMCSA\'da ro\'yxatdan o\'tgan kontaktga yuborildi.',
+            'verification' => $service->issueCode($this->carrierOrFail($request), $data['channel']),
+        ]);
+    }
+
+    /** Kompaniya uchun: kodni tasdiqlash. Shundan keyin ilova ochiladi. */
+    public function verifyCarrierCode(Request $request, CarrierVerificationService $service)
+    {
+        $data = $request->validate(['code' => ['required', 'string']]);
+
+        $carrier = $service->confirmCode($this->carrierOrFail($request), $data['code']);
+
+        return response()->json([
+            'message' => 'Kompaniya tasdiqlandi.',
+            'carrier' => $carrier,
+            'user'    => $this->userPayload($request->user()->fresh()),
+        ]);
+    }
+
     // ------------------------------------------------------------------
+
+    protected function carrierOrFail(Request $request): Carrier
+    {
+        $carrier = optional($request->user())->carrier;
+
+        abort_unless($carrier, 403, 'Bu amal faqat kompaniya akkaunti uchun.');
+
+        return $carrier;
+    }
 
     protected function issueCode(User $user, string $channel): array
     {
@@ -204,8 +329,13 @@ class AuthController extends Controller
             'is_verified'       => $user->is_verified,
             'email_verified'    => $user->email_verified_at !== null,
             'phone_verified'    => $user->phone_verified_at !== null,
+            'is_blocked'        => $user->is_blocked,
             'carrier'           => $user->carrier,
+            'fmcsa_verified'    => $user->isCarrier() ? (bool) optional($user->carrier)->is_fmcsa_verified : null,
             'driver_profile_id' => optional($user->driverProfile)->id,
+            'is_blacklisted'    => $user->isCarrier()
+                ? (bool) optional($user->carrier)->is_blacklisted
+                : (bool) optional($user->driverProfile)->is_blacklisted,
         ];
     }
 }

@@ -9,6 +9,7 @@ use App\Models\JobPost;
 use App\Services\DriverScoringService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Carrier tomoni: vakansiyaga kelgan arizalarni ball bo'yicha saralab ko'rsatadi.
@@ -104,15 +105,61 @@ class ApplicantController extends Controller
             'status' => ['required', Rule::in(['applied', 'screening', 'interview', 'hired', 'rejected'])],
         ]);
 
+        $driver = $application->driverProfile;
+
+        if ($data['status'] === 'hired') {
+            $this->assertDriverCanBeHired($driver, $carrier->id);
+        }
+
         $application->status = $data['status'];
         $application->save();
 
         // Driver profilining umumiy holati ham arizadan orqada qolmasin.
         if (in_array($data['status'], ['hired', 'rejected'], true)) {
-            $application->driverProfile->update(['status' => $data['status']]);
+            $driver->status = $data['status'];
         }
 
+        if ($data['status'] === 'hired') {
+            // Eksklyuzivlik: driver shu kompaniyaga biriktiriladi.
+            $driver->hired_carrier_id = $carrier->id;
+            $driver->hired_at = now();
+
+            // Boshqa kompaniyalardagi ochiq arizalari yopiladi.
+            Application::where('driver_profile_id', $driver->id)
+                ->where('id', '!=', $application->id)
+                ->whereNotIn('status', ['hired', 'rejected'])
+                ->update(['status' => 'rejected']);
+        }
+
+        // "hired" holatidan qaytarilsa biriktirish ham bekor bo'ladi.
+        if ($data['status'] !== 'hired' && $driver->hired_carrier_id === $carrier->id) {
+            $driver->hired_carrier_id = null;
+            $driver->hired_at = null;
+        }
+
+        $driver->save();
+
         return response()->json(['application' => $application->fresh()]);
+    }
+
+    /**
+     * Bitta kompaniya yollagan driverni boshqasi yollay olmaydi.
+     *
+     * @throws ValidationException
+     */
+    protected function assertDriverCanBeHired($driver, int $carrierId): void
+    {
+        if ($driver->is_blacklisted) {
+            throw ValidationException::withMessages([
+                'status' => ['Bu driver blacklist\'da — ishga olib bo\'lmaydi.'],
+            ]);
+        }
+
+        if ($driver->hired_carrier_id !== null && $driver->hired_carrier_id !== $carrierId) {
+            throw ValidationException::withMessages([
+                'status' => ['Bu driver boshqa kompaniya tomonidan allaqachon ishga olingan.'],
+            ]);
+        }
     }
 
     protected function sortRows($rows, string $sort)

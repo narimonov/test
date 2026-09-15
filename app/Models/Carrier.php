@@ -11,12 +11,31 @@ class Carrier extends Model
 
     protected $guarded = ['id'];
 
-    protected $casts = [
-        'scoring_overrides'       => 'array',
-        'subscription_expires_at' => 'datetime',
+    protected $attributes = [
+        'subscription_plan'   => 'free',
+        'subscription_status' => 'inactive',
+        'allowed_to_operate'  => false,
     ];
 
-    protected $appends = ['has_active_subscription'];
+    protected $casts = [
+        'scoring_overrides'       => 'array',
+        'fmcsa_snapshot'          => 'array',
+        'allowed_to_operate'      => 'boolean',
+        'subscription_expires_at' => 'datetime',
+        'fmcsa_checked_at'        => 'datetime',
+        'fmcsa_verified_at'       => 'datetime',
+        'blocked_at'              => 'datetime',
+        'blacklisted_at'          => 'datetime',
+    ];
+
+    protected $appends = ['has_active_subscription', 'is_fmcsa_verified', 'is_blocked', 'is_blacklisted'];
+
+    /*
+     * FMCSA kontaktlari ichki ma'lumot — API javobiga chiqmaydi.
+     * fmcsa_snapshot ham yashiriladi, chunki uning ichida o'sha telefon va
+     * email xom holda turadi.
+     */
+    protected $hidden = ['fmcsa_phone', 'fmcsa_email', 'fmcsa_snapshot'];
 
     public function user()
     {
@@ -26,6 +45,31 @@ class Carrier extends Model
     public function jobPosts()
     {
         return $this->hasMany(JobPost::class);
+    }
+
+    public function reviews()
+    {
+        return $this->hasMany(Review::class)->where('subject_type', Review::SUBJECT_CARRIER);
+    }
+
+    public function hiredDrivers()
+    {
+        return $this->hasMany(DriverProfile::class, 'hired_carrier_id');
+    }
+
+    public function getIsFmcsaVerifiedAttribute(): bool
+    {
+        return $this->fmcsa_verified_at !== null && $this->allowed_to_operate;
+    }
+
+    public function getIsBlockedAttribute(): bool
+    {
+        return $this->blocked_at !== null;
+    }
+
+    public function getIsBlacklistedAttribute(): bool
+    {
+        return $this->blacklisted_at !== null;
     }
 
     /**

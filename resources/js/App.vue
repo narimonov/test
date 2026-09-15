@@ -20,9 +20,12 @@
                             <li class="nav-item">
                                 <router-link class="nav-link" :to="{ name: 'driver.profile' }">Profilim</router-link>
                             </li>
+                            <li class="nav-item">
+                                <router-link class="nav-link" :to="{ name: 'driver.documents' }">Hujjatlarim</router-link>
+                            </li>
                         </template>
 
-                        <template v-if="auth.isCarrier">
+                        <template v-if="auth.isCarrier && auth.isFmcsaVerified">
                             <li class="nav-item">
                                 <router-link class="nav-link" :to="{ name: 'carrier.dashboard' }">Dashboard</router-link>
                             </li>
@@ -36,16 +39,27 @@
                                 <router-link class="nav-link" :to="{ name: 'carrier.criteria' }">Kriteriyalar</router-link>
                             </li>
                         </template>
+                        <template v-if="auth.isAdmin">
+                            <li class="nav-item">
+                                <router-link class="nav-link" :to="{ name: 'admin.overview' }">Umumiy</router-link>
+                            </li>
+                            <li class="nav-item">
+                                <router-link class="nav-link" :to="{ name: 'admin.users' }">Foydalanuvchilar</router-link>
+                            </li>
+                            <li class="nav-item">
+                                <router-link class="nav-link" :to="{ name: 'admin.appeals' }">Apelyatsiyalar</router-link>
+                            </li>
+                        </template>
                     </ul>
 
                     <ul class="navbar-nav" @click="menuOpen = false">
-                        <li v-if="auth.isCarrier" class="nav-item">
+                        <li v-if="auth.isCarrier && auth.isFmcsaVerified" class="nav-item">
                             <router-link class="nav-link" :to="{ name: 'carrier.billing' }">
                                 <span v-if="auth.hasSubscription" class="badge bg-success">Obuna aktiv</span>
                                 <span v-else class="badge bg-warning text-dark">Obuna kerak</span>
                             </router-link>
                         </li>
-                        <li v-if="auth.isCarrier" class="nav-item">
+                        <li v-if="auth.isCarrier && auth.isFmcsaVerified" class="nav-item">
                             <router-link class="nav-link" :to="{ name: 'carrier.company' }">Kompaniya</router-link>
                         </li>
                         <li class="nav-item">
@@ -56,10 +70,22 @@
             </div>
         </nav>
 
-        <div v-if="auth.isAuthenticated && !auth.isVerified" class="alert alert-warning rounded-0 mb-0 text-center">
+        <div v-if="auth.isCarrier && !auth.isFmcsaVerified" class="alert alert-warning rounded-0 mb-0 text-center">
+            Kompaniyangiz hali tasdiqlanmagan.
+            <router-link :to="{ name: 'carrier.verify' }" class="alert-link">FMCSA kodi bilan tasdiqlang</router-link>
+            — ilova shundan keyin ochiladi.
+        </div>
+
+        <div v-else-if="auth.isAuthenticated && !auth.isAdmin && !auth.isVerified"
+             class="alert alert-warning rounded-0 mb-0 text-center">
             Akkauntingiz tasdiqlanmagan.
             <router-link :to="{ name: 'verify' }" class="alert-link">Telefon yoki emailni tasdiqlang</router-link>
             — ariza berish va driver bazasi shundan keyin ochiladi.
+        </div>
+
+        <div v-if="blacklisted" class="alert alert-danger rounded-0 mb-0 text-center">
+            Akkauntingiz blacklist'da.
+            <router-link :to="{ name: 'appeal' }" class="alert-link">Apelyatsiya bering</router-link>
         </div>
 
         <main class="flex-grow-1 py-4">
@@ -90,6 +116,12 @@ export default {
 
     setup() {
         return { auth: useAuthStore() };
+    },
+
+    computed: {
+        blacklisted() {
+            return !!this.auth.user?.is_blacklisted;
+        },
     },
 
     methods: {

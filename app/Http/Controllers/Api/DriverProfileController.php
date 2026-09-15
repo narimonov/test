@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\DriverProfile;
+use App\Rules\ExperienceMatchesCdlIssueDate;
 use App\Services\DriverScoringService;
 use Illuminate\Http\Request;
 
@@ -31,7 +32,10 @@ class DriverProfileController extends Controller
     public function update(Request $request, DriverScoringService $scoring)
     {
         $profile = $this->profileFor($request);
-        $profile->fill($this->validated($request))->save();
+
+        $data = $request->validate(static::rulesWithCdlCheck($request, false, $profile));
+
+        $profile->fill($data)->save();
 
         return $this->show($request, $scoring);
     }
@@ -91,7 +95,23 @@ class DriverProfileController extends Controller
 
     protected function validated(Request $request): array
     {
-        return $request->validate(static::rules(false));
+        return $request->validate(static::rulesWithCdlCheck($request, false));
+    }
+
+    /**
+     * Tajriba CDL olingan sanaga mos kelishini tekshiruvchi qoidani qo'shadi.
+     * So'rovda issued date bo'lmasa saqlangan qiymat ishlatiladi.
+     */
+    public static function rulesWithCdlCheck(Request $request, bool $requireName, DriverProfile $existing = null): array
+    {
+        $rules = static::rules($requireName);
+
+        $issuedAt = $request->input('cdl_issued_at')
+            ?: optional(optional($existing)->cdl_issued_at)->toDateString();
+
+        $rules['years_experience'][] = new ExperienceMatchesCdlIssueDate($issuedAt);
+
+        return $rules;
     }
 
     protected function profileFor(Request $request): DriverProfile

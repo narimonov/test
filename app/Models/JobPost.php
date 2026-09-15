@@ -12,6 +12,11 @@ class JobPost extends Model
 
     protected $guarded = ['id'];
 
+    protected $attributes = [
+        'driver_type' => 'company_driver',
+        'is_open'     => true,
+    ];
+
     protected $casts = [
         'requirements' => 'array',
         'is_open'      => 'boolean',

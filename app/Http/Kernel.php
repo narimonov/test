@@ -66,5 +66,8 @@ class Kernel extends HttpKernel
         'role' => \App\Http\Middleware\EnsureUserRole::class,
         'account.verified' => \App\Http\Middleware\EnsureVerified::class,
         'carrier.subscribed' => \App\Http\Middleware\EnsureCarrierSubscribed::class,
+        'carrier.fmcsa' => \App\Http\Middleware\EnsureCarrierVerifiedWithFmcsa::class,
+        'not.blocked' => \App\Http\Middleware\EnsureNotBlocked::class,
+        'driver.allowed' => \App\Http\Middleware\EnsureDriverNotBlacklisted::class,
     ];
 }

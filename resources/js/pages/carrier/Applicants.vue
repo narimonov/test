@@ -126,14 +126,26 @@
                                     </option>
                                 </select>
                             </td>
-                            <td class="text-end">
-                                <button class="btn btn-sm btn-outline-secondary">Batafsil</button>
+                            <td class="text-end" @click.stop>
+                                <button class="btn btn-sm btn-outline-secondary me-1" @click="select(row)">Batafsil</button>
+                                <button v-if="canReview(row)" class="btn btn-sm btn-outline-primary"
+                                        @click="reviewing = row">
+                                    Baho
+                                </button>
                             </td>
                         </tr>
                     </tbody>
                 </table>
             </div>
         </div>
+
+        <ReviewModal
+            v-if="reviewing"
+            :application-id="reviewing.id"
+            :title="`${reviewing.driver.full_name} haqida baho`"
+            @close="reviewing = null"
+            @saved="onReviewed"
+        />
 
         <!-- Driver tafsiloti -->
         <div v-if="selected" class="modal d-block" tabindex="-1" style="background: rgba(15,23,42,.5)"
@@ -179,12 +191,13 @@ import AlertBox from '../../components/AlertBox.vue';
 import ScorePill from '../../components/ScorePill.vue';
 import ScoreBreakdown from '../../components/ScoreBreakdown.vue';
 import DriverSummary from '../../components/DriverSummary.vue';
+import ReviewModal from '../../components/ReviewModal.vue';
 import { APPLICATION_STATUSES } from '../../constants';
 
 export default {
     name: 'CarrierApplicantsPage',
 
-    components: { AlertBox, ScorePill, ScoreBreakdown, DriverSummary },
+    components: { AlertBox, ScorePill, ScoreBreakdown, DriverSummary, ReviewModal },
 
     data() {
         return {
@@ -192,6 +205,7 @@ export default {
             applicants: [],
             summary: null,
             selected: null,
+            reviewing: null,
             statuses: APPLICATION_STATUSES,
             filters: { sort: 'score', tier: null, min_score: null, status: null },
             loading: true,
@@ -225,6 +239,21 @@ export default {
 
         select(row) {
             this.selected = row;
+        },
+
+        /** Baho faqat hamkorlik yakunlangandan keyin qoldiriladi. */
+        canReview(row) {
+            return ['hired', 'rejected'].includes(row.status);
+        },
+
+        onReviewed(data) {
+            this.reviewing = null;
+
+            if (data.blacklisted) {
+                this.error = data.message;
+            }
+
+            this.load();
         },
 
         async updateStatus(row, status) {

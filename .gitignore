@@ -16,3 +16,4 @@ yarn-error.log
 /database/*.sqlite
 /public/js/*.map
 /public/css/*.map
+/storage/app/documents/

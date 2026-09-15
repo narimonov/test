@@ -35,7 +35,11 @@ class RecruitingFlowTest extends TestCase
             'subscription_plan'       => $subscribed ? 'pro' : 'free',
             'subscription_status'     => $subscribed ? 'active' : 'inactive',
             'subscription_expires_at' => $subscribed ? now()->addMonth() : null,
-        ]);
+        ])->forceFill([
+            // FMCSA tekshiruvi alohida test faylida sinaladi.
+            'fmcsa_verified_at'  => now(),
+            'allowed_to_operate' => true,
+        ])->save();
 
         return $user;
     }
@@ -86,16 +90,17 @@ class RecruitingFlowTest extends TestCase
         $this->postJson('/api/auth/register', [
             'name'                  => 'Boss',
             'email'                 => 'boss@test.com',
-            'company_name'          => 'Big Freight',
             'password'              => 'password123',
             'password_confirmation' => 'password123',
             'role'                  => 'carrier',
+            'dot_number'            => '1234567',
         ])->assertCreated();
 
-        $this->assertDatabaseHas('carriers', ['company_name' => 'Big Freight']);
+        // Kompaniya nomi FMCSA'dan olinadi, foydalanuvchidan emas.
+        $this->assertDatabaseHas('carriers', ['dot_number' => '1234567']);
     }
 
-    public function test_carrier_registration_requires_a_company_name()
+    public function test_carrier_registration_requires_an_mc_or_dot_number()
     {
         $this->postJson('/api/auth/register', [
             'name'                  => 'Boss',
@@ -103,7 +108,7 @@ class RecruitingFlowTest extends TestCase
             'password'              => 'password123',
             'password_confirmation' => 'password123',
             'role'                  => 'carrier',
-        ])->assertStatus(422)->assertJsonValidationErrors('company_name');
+        ])->assertStatus(422)->assertJsonValidationErrors(['dot_number', 'mc_number']);
     }
 
     public function test_unverified_driver_cannot_apply()
@@ -235,6 +240,7 @@ class RecruitingFlowTest extends TestCase
             'role' => User::ROLE_CARRIER,
         ]);
         $otherCarrier = Carrier::create(['user_id' => $other->id, 'company_name' => 'Other Co']);
+        $otherCarrier->forceFill(['fmcsa_verified_at' => now(), 'allowed_to_operate' => true])->save();
         $job = JobPost::create(['carrier_id' => $otherCarrier->id, 'title' => 'Not yours']);
 
         Sanctum::actingAs($this->carrier());

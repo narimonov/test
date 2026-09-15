@@ -32,6 +32,8 @@ class TalentPoolController extends Controller
             'max_jobs_3y'     => ['nullable', 'integer', 'min:0'],
             'no_dui'          => ['nullable', 'boolean'],
             'hide_disqualified' => ['nullable', 'boolean'],
+            'include_hired'     => ['nullable', 'boolean'],
+            'include_blacklisted' => ['nullable', 'boolean'],
             'min_score'       => ['nullable', 'integer', 'min:0', 'max:100'],
             'sort'            => ['nullable', Rule::in(['score', 'date', 'experience', 'safety', 'name'])],
             'per_page'        => ['nullable', 'integer', 'min:5', 'max:100'],
@@ -41,6 +43,9 @@ class TalentPoolController extends Controller
 
         $drivers = DriverProfile::query()
             ->where('is_searchable', true)
+            // Boshqa kompaniya yollagan va blacklist'dagi driverlar default'da chiqmaydi.
+            ->when(empty($filters['include_hired']), fn ($query) => $query->whereNull('hired_carrier_id'))
+            ->when(empty($filters['include_blacklisted']), fn ($query) => $query->whereNull('blacklisted_at'))
             ->filter($filters)
             ->limit(500)
             ->get();
@@ -97,7 +102,7 @@ class TalentPoolController extends Controller
     /** Recruiter qo'lda driver kiritadi (telefon orqali gaplashib olgan ma'lumot). */
     public function store(Request $request, DriverScoringService $scoring)
     {
-        $data = $request->validate(DriverProfileController::rules(true));
+        $data = $request->validate(DriverProfileController::rulesWithCdlCheck($request, true));
 
         $driver = DriverProfile::create($data + [
             'source'             => 'manual',
@@ -115,7 +120,9 @@ class TalentPoolController extends Controller
         // Faqat qo'lda kiritilgan driverni tahrirlash mumkin — driver o'z profilini o'zi boshqaradi.
         abort_if($driverProfile->user_id !== null, 403, 'Bu driver o\'z profilini o\'zi boshqaradi.');
 
-        $driverProfile->fill($request->validate(DriverProfileController::rules(false)))->save();
+        $driverProfile->fill(
+            $request->validate(DriverProfileController::rulesWithCdlCheck($request, false, $driverProfile))
+        )->save();
 
         return response()->json([
             'driver' => $driverProfile->fresh(),

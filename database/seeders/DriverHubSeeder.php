@@ -46,6 +46,15 @@ class DriverHubSeeder extends Seeder
                 'subscription_plan'       => 'pro',
                 'subscription_status'     => 'active',
                 'subscription_expires_at' => now()->addYear(),
+
+                // Demo uchun FMCSA tekshiruvi o'tgan deb belgilanadi.
+                'fmcsa_legal_name'        => 'SILK ROAD LOGISTICS LLC',
+                'fmcsa_status'            => 'A',
+                'allowed_to_operate'      => true,
+                'fmcsa_phone'             => '+15551110001',
+                'fmcsa_email'             => 'dispatch@silkroad.example',
+                'fmcsa_checked_at'        => now(),
+                'fmcsa_verified_at'       => now(),
             ]
         );
 
@@ -123,7 +132,18 @@ class DriverHubSeeder extends Seeder
             );
         }
 
+        $admin = User::updateOrCreate(
+            ['email' => 'admin@example.com'],
+            [
+                'name'              => 'Platform Admin',
+                'password'          => Hash::make('password'),
+                'role'              => User::ROLE_ADMIN,
+                'email_verified_at' => now(),
+            ]
+        );
+
         $this->command->info('Demo akkauntlar:');
+        $this->command->info('  Admin:     admin@example.com / password');
         $this->command->info('  Kompaniya: carrier@example.com / password');
         $this->command->info('  Driver:    driver@example.com / password');
     }
