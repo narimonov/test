@@ -51,9 +51,14 @@ class User extends Authenticatable
         'phone_verified_at'            => 'datetime',
         'verification_code_expires_at' => 'datetime',
         'blocked_at'                   => 'datetime',
+        'privacy_accepted_at'          => 'datetime',
+        'sms_consent_at'               => 'datetime',
+        'mvr_consent_at'               => 'datetime',
     ];
 
-    protected $appends = ['is_verified', 'is_blocked'];
+    protected $appends = ['is_verified', 'is_blocked', 'has_current_privacy_consent'];
+
+    protected $hidden_consent_ip = true;
     public function clients()
     {
         return $this->hasMany(Client::class);
@@ -95,5 +100,20 @@ class User extends Authenticatable
     public function getIsBlockedAttribute(): bool
     {
         return $this->blocked_at !== null;
+    }
+
+    /**
+     * True only for the policy version currently in force — a changed policy
+     * has to be accepted again.
+     */
+    public function getHasCurrentPrivacyConsentAttribute(): bool
+    {
+        return $this->privacy_accepted_at !== null
+            && $this->privacy_version === config('privacy.version');
+    }
+
+    public function conversations()
+    {
+        return $this->belongsToMany(Conversation::class, 'conversation_participants')->withTimestamps();
     }
 }

@@ -1,71 +1,115 @@
 <template>
-    <div class="row justify-content-center">
-        <div class="col-lg-10">
-            <h4 class="mb-1">Obuna</h4>
-            <p class="text-muted small mb-4">
-                Driver bazasi va arizachilar ro'yxati aktiv obuna bilan ochiladi.
-            </p>
+    <div>
+        <div class="mb-4">
+            <h4 class="page-title">Billing</h4>
+            <p class="page-lede">Your plan decides how much of the driver market you can reach.</p>
+        </div>
 
-            <AlertBox :message="error" />
-            <AlertBox :message="notice" variant="success" />
+        <AlertBox :message="error" />
+        <AlertBox :message="notice" variant="success" />
 
-            <div v-if="!auth.isVerified" class="alert alert-warning">
-                Obuna ochishdan oldin telefon yoki emailni tasdiqlang.
-                <router-link :to="{ name: 'verify' }" class="alert-link">Tasdiqlash</router-link>
-            </div>
+        <div v-if="!auth.isVerified" class="alert alert-warning">
+            Verify your account before subscribing.
+            <router-link :to="{ name: 'carrier.verify' }" class="alert-link">Verify now</router-link>
+        </div>
 
-            <div v-if="carrier" class="card mb-4">
-                <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div v-if="loading" class="empty-state">Loading…</div>
+
+        <template v-else>
+            <div v-if="current" class="card mb-4">
+                <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3">
                     <div>
-                        <div class="text-muted small">Joriy holat</div>
-                        <div class="fw-semibold">
-                            {{ planLabel(carrier.subscription_plan) }} —
-                            <span :class="carrier.has_active_subscription ? 'text-success' : 'text-danger'">
-                                {{ carrier.has_active_subscription ? 'aktiv' : 'aktiv emas' }}
+                        <div class="label-mono">Current plan</div>
+                        <div class="fs-5 fw-bold">
+                            {{ current.name }}
+                            <span class="badge ms-1" :class="current.active ? 'bg-success' : 'bg-secondary'">
+                                {{ current.active ? 'Active' : 'Inactive' }}
                             </span>
                         </div>
-                        <div v-if="carrier.subscription_expires_at" class="text-muted small">
-                            Amal qilish muddati: {{ date(carrier.subscription_expires_at) }}
+                        <div class="text-muted small">
+                            {{ current.active_jobs }} active job posts
+                            <template v-if="current.max_active_jobs"> of {{ current.max_active_jobs }}</template>
+                            <template v-else> (no limit)</template>
                         </div>
                     </div>
-                    <button v-if="carrier.has_active_subscription" class="btn btn-outline-danger btn-sm"
-                            @click="cancel">
-                        Obunani bekor qilish
+                    <button v-if="current.active" class="btn btn-sm btn-outline-danger" @click="cancel">
+                        Cancel subscription
                     </button>
                 </div>
             </div>
 
-            <div class="row g-3">
-                <div v-for="plan in plans" :key="plan.value" class="col-md-4">
-                    <div class="card h-100" :class="{ 'border-primary': carrier?.subscription_plan === plan.value }">
+            <div class="row g-3 mb-4">
+                <div v-for="tier in tiers" :key="tier.key" class="col-lg-4">
+                    <div class="card h-100" :class="{ 'border-primary': isCurrent(tier) }">
                         <div class="card-body d-flex flex-column">
-                            <h5>{{ plan.label }}</h5>
-                            <div class="display-6 fw-bold mb-1">${{ plan.price }}</div>
-                            <div class="text-muted small mb-3">oyiga</div>
+                            <div class="label-mono">{{ tier.name }}</div>
+                            <div class="d-flex align-items-baseline gap-1 mb-1">
+                                <span class="display-6 fw-bold">${{ tier.price_cents / 100 }}</span>
+                                <span class="text-muted small">/month</span>
+                            </div>
+                            <p class="text-muted small mb-3">{{ tier.tagline }}</p>
 
-                            <ul class="small text-muted ps-3 mb-4 flex-grow-1">
-                                <li v-for="feature in plan.features" :key="feature">{{ feature }}</li>
+                            <ul class="small ps-3 mb-4 flex-grow-1">
+                                <li v-for="line in tier.highlights" :key="line" class="mb-1">{{ line }}</li>
                             </ul>
 
-                            <button class="btn" :class="carrier?.subscription_plan === plan.value && carrier?.has_active_subscription
-                                        ? 'btn-outline-secondary' : 'btn-primary'"
-                                    :disabled="saving || !auth.isVerified"
-                                    @click="subscribe(plan.value)">
-                                <template v-if="carrier?.subscription_plan === plan.value && carrier?.has_active_subscription">
-                                    Joriy tarif
-                                </template>
-                                <template v-else>Tanlash</template>
+                            <button class="btn w-100"
+                                    :class="isCurrent(tier) ? 'btn-outline-secondary' : 'btn-primary'"
+                                    :disabled="working || !auth.isVerified"
+                                    @click="choose(tier)">
+                                <template v-if="isCurrent(tier)">Current plan</template>
+                                <template v-else>Choose {{ tier.name }}</template>
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <p class="text-muted small mt-4 mb-0">
-                To'lov tizimi hali ulanmagan — hozircha obuna shu yerdan qo'lda
-                aktivlashtiriladi. Stripe ulangach shu tugma to'lov sahifasiga olib boradi.
-            </p>
-        </div>
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h6 class="mb-3">Payment method</h6>
+                    <div class="d-flex flex-wrap gap-3">
+                        <label v-for="(label, key) in providers" :key="key" class="form-check">
+                            <input v-model="provider" :value="key" type="radio" class="form-check-input">
+                            <span class="form-check-label">{{ label }}</span>
+                        </label>
+                    </div>
+                    <div class="form-text mt-2">
+                        Cards are billed in USD. Payme and Click settle in UZS at the current rate.
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="payments.length" class="card">
+                <div class="card-header py-2">Recent payments</div>
+                <div class="table-responsive">
+                    <table class="table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Plan</th>
+                                <th>Provider</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="payment in payments" :key="payment.id">
+                                <td class="text-muted small">{{ date(payment.created_at) }}</td>
+                                <td>{{ payment.plan }}</td>
+                                <td>{{ payment.provider }}</td>
+                                <td>${{ payment.amount_cents / 100 }}</td>
+                                <td>
+                                    <span class="badge" :class="statusVariant(payment.status)">
+                                        {{ payment.status }}
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </template>
     </div>
 </template>
 
@@ -73,27 +117,6 @@
 import api from '../../api';
 import AlertBox from '../../components/AlertBox.vue';
 import { useAuthStore } from '../../stores/auth';
-
-const PLANS = [
-    {
-        value: 'starter',
-        label: 'Starter',
-        price: 99,
-        features: ['3 tagacha ochiq vakansiya', 'Arizachilarni ball bo\'yicha ko\'rish', 'Driver bazasi qidiruvi'],
-    },
-    {
-        value: 'pro',
-        label: 'Pro',
-        price: 249,
-        features: ['Cheksiz vakansiya', 'Kriteriya vaznlarini sozlash', 'Qo\'lda driver kiritish', 'Butun driver bazasi'],
-    },
-    {
-        value: 'enterprise',
-        label: 'Enterprise',
-        price: 599,
-        features: ['Pro dagi hammasi', 'Bir nechta recruiter', 'Prioritet qo\'llab-quvvatlash'],
-    },
-];
 
 export default {
     name: 'CarrierBillingPage',
@@ -106,9 +129,13 @@ export default {
 
     data() {
         return {
-            carrier: null,
-            plans: PLANS,
-            saving: false,
+            tiers: [],
+            providers: {},
+            current: null,
+            payments: [],
+            provider: 'stripe',
+            loading: true,
+            working: false,
             error: null,
             notice: null,
         };
@@ -116,54 +143,89 @@ export default {
 
     created() {
         this.load();
+        this.settleReturn();
     },
 
     methods: {
         async load() {
             try {
-                const { data } = await api.get('/carrier/profile');
-                this.carrier = data.carrier;
-            } catch (e) {
-                this.error = e.friendly;
-            }
-        },
-
-        planLabel(value) {
-            return PLANS.find((plan) => plan.value === value)?.label || 'Tarif tanlanmagan';
-        },
-
-        date(value) {
-            return value ? new Date(value).toLocaleDateString('uz-UZ') : '—';
-        },
-
-        async subscribe(plan) {
-            this.saving = true;
-            this.error = null;
-            this.notice = null;
-
-            try {
-                const { data } = await api.post('/carrier/subscription', { plan });
-                this.carrier = data.carrier;
-                await this.auth.refresh();
-                this.notice = data.message;
+                const { data } = await api.get('/carrier/plans');
+                this.tiers = data.tiers;
+                this.providers = data.providers;
+                this.current = data.current;
+                this.payments = data.payments;
             } catch (e) {
                 this.error = e.friendly;
             } finally {
-                this.saving = false;
+                this.loading = false;
+            }
+        },
+
+        /**
+         * The development gateway sends the browser straight back here with a
+         * reference; confirm it so the whole flow can be tested without a
+         * real provider.
+         */
+        async settleReturn() {
+            const { status, reference } = this.$route.query;
+
+            if (status !== 'success' || !reference) return;
+
+            try {
+                const { data } = await api.post('/carrier/checkout/confirm', { reference });
+                this.notice = data.message;
+                await this.auth.refresh();
+                await this.load();
+            } catch (e) {
+                // A real gateway confirms through its webhook instead.
+            } finally {
+                this.$router.replace({ query: {} });
+            }
+        },
+
+        isCurrent(tier) {
+            return this.current && this.current.active && this.current.plan === tier.key;
+        },
+
+        async choose(tier) {
+            this.working = true;
+            this.error = null;
+
+            try {
+                const { data } = await api.post('/carrier/checkout', {
+                    plan: tier.key,
+                    provider: this.provider,
+                });
+
+                window.location.href = data.redirect_url;
+            } catch (e) {
+                this.error = e.friendly;
+                this.working = false;
             }
         },
 
         async cancel() {
-            if (!window.confirm('Obuna bekor qilinsinmi? Driver bazasi yopiladi.')) return;
+            if (!window.confirm('Cancel the subscription? The driver pool closes immediately.')) return;
 
             try {
                 const { data } = await api.delete('/carrier/subscription');
-                this.carrier = data.carrier;
-                await this.auth.refresh();
                 this.notice = data.message;
+                await this.auth.refresh();
+                await this.load();
             } catch (e) {
                 this.error = e.friendly;
             }
+        },
+
+        statusVariant(status) {
+            return {
+                paid: 'bg-success', pending: 'bg-secondary',
+                failed: 'bg-danger', cancelled: 'bg-warning text-dark',
+            }[status] || 'bg-secondary';
+        },
+
+        date(value) {
+            return value ? new Date(value).toLocaleDateString('en-US') : '—';
         },
     },
 };

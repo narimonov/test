@@ -5,13 +5,14 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Carrier;
 use App\Services\DriverScoringService;
+use App\Services\PlanGate;
 use Illuminate\Http\Request;
 
 class ScoringController extends Controller
 {
     /**
-     * UI kriteriyalar va og'irliklarni shu yerdan oladi — frontendda
-     * kriteriyalar qattiq yozilmagan, hammasi config'dan keladi.
+     * The UI reads criteria and weights from here; nothing about the criteria is
+     * hard-coded in the frontend.
      */
     public function index(Request $request, DriverScoringService $scoring)
     {
@@ -22,9 +23,21 @@ class ScoringController extends Controller
         return response()->json($scoring->withOverrides($overrides)->criteriaSummary());
     }
 
-    /** Carrier o'z og'irliklarini sozlaydi (weight/knockout override). */
-    public function updateOverrides(Request $request, DriverScoringService $scoring)
+    /** A carrier tunes its own weights and knockout overrides. */
+    public function updateOverrides(Request $request, DriverScoringService $scoring, PlanGate $plans)
     {
+        $carrier = Carrier::firstOrCreate(
+            ['user_id' => $request->user()->id],
+            ['company_name' => $request->user()->name]
+        );
+
+        if (! $plans->allows($carrier, 'criteria_tuning')) {
+            return response()->json([
+                'message' => 'Tuning the scoring weights is part of the Growth plan.',
+                'code'    => 'upgrade_required',
+            ], 402);
+        }
+
         $data = $request->validate([
             'knockouts'   => ['nullable', 'array'],
             'criteria'    => ['nullable', 'array'],
@@ -33,16 +46,11 @@ class ScoringController extends Controller
             'tiers'       => ['nullable', 'array'],
         ]);
 
-        $carrier = Carrier::firstOrCreate(
-            ['user_id' => $request->user()->id],
-            ['company_name' => $request->user()->name]
-        );
-
         $carrier->scoring_overrides = $data ?: null;
         $carrier->save();
 
         return response()->json([
-            'message'  => 'Kriteriyalar saqlandi.',
+            'message'  => 'Criteria saved.',
             'criteria' => $scoring->withOverrides($carrier->scoring_overrides)->criteriaSummary(),
         ]);
     }

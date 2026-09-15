@@ -2,12 +2,10 @@
     <div>
         <div class="d-flex justify-content-between align-items-start mb-3">
             <div>
-                <h4 class="mb-1">Driver bazasi</h4>
-                <p class="text-muted small mb-0">
-                    Kriteriyalar bo'yicha filtrlang — natija ball bo'yicha saralanadi.
-                </p>
+                <h4 class="page-title">Driver pool</h4>
+                <p class="page-lede">Filter on your criteria — results come back scored and sorted.</p>
             </div>
-            <button class="btn btn-primary" @click="openAddForm">Qo'lda driver qo'shish</button>
+            <button class="btn btn-primary" @click="openAddForm">Add a driver</button>
         </div>
 
         <AlertBox :message="error" :errors="errors" />
@@ -17,27 +15,27 @@
                 <div class="card filter-panel">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h6 class="mb-0">Filtrlar</h6>
-                            <button class="btn btn-sm btn-link p-0" @click="reset">Tozalash</button>
+                            <h6 class="mb-0">Filters</h6>
+                            <button class="btn btn-sm btn-link p-0" @click="reset">Reset</button>
                         </div>
 
                         <div class="mb-3">
                             <input v-model="filters.q" type="search" class="form-control form-control-sm"
-                                   placeholder="Ism, telefon, shahar" @keyup.enter="load(1)">
+                                   placeholder="Name, phone or city" @keyup.enter="load(1)">
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small mb-1">Shtat</label>
+                            <label class="form-label small mb-1">State</label>
                             <select v-model="filters.state" class="form-select form-select-sm" @change="load(1)">
-                                <option :value="null">Barchasi</option>
+                                <option :value="null">All</option>
                                 <option v-for="state in states" :key="state" :value="state">{{ state }}</option>
                             </select>
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small mb-1">CDL klass</label>
+                            <label class="form-label small mb-1">CDL class</label>
                             <select v-model="filters.cdl_class" class="form-select form-select-sm" @change="load(1)">
-                                <option :value="null">Barchasi</option>
+                                <option :value="null">All</option>
                                 <option value="A">A</option>
                                 <option value="B">B</option>
                                 <option value="C">C</option>
@@ -45,25 +43,25 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small mb-1">Min. tajriba (yil)</label>
+                            <label class="form-label small mb-1">Min experience (yrs)</label>
                             <input v-model.number="filters.min_experience" type="number" step="0.5" min="0"
                                    class="form-control form-control-sm" @change="load(1)">
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small mb-1">Maks. avariya (3y)</label>
+                            <label class="form-label small mb-1">Max accidents (3y)</label>
                             <input v-model.number="filters.max_accidents" type="number" min="0"
                                    class="form-control form-control-sm" @change="load(1)">
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small mb-1">Maks. violation (3y)</label>
+                            <label class="form-label small mb-1">Max violations (3y)</label>
                             <input v-model.number="filters.max_violations" type="number" min="0"
                                    class="form-control form-control-sm" @change="load(1)">
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small mb-1">Maks. ish soni (3y)</label>
+                            <label class="form-label small mb-1">Max jobs (3y)</label>
                             <input v-model.number="filters.max_jobs_3y" type="number" min="0"
                                    class="form-control form-control-sm" @change="load(1)">
                         </div>
@@ -71,7 +69,7 @@
                         <div class="mb-3">
                             <label class="form-label small mb-1">Endorsement</label>
                             <select v-model="filters.endorsement" class="form-select form-select-sm" @change="load(1)">
-                                <option :value="null">Barchasi</option>
+                                <option :value="null">All</option>
                                 <option v-for="item in endorsements" :key="item.value" :value="item.value">{{ item.label }}</option>
                             </select>
                         </div>
@@ -79,21 +77,21 @@
                         <div class="mb-3">
                             <label class="form-label small mb-1">Equipment</label>
                             <select v-model="filters.equipment" class="form-select form-select-sm" @change="load(1)">
-                                <option :value="null">Barchasi</option>
+                                <option :value="null">All</option>
                                 <option v-for="item in equipment" :key="item.value" :value="item.value">{{ item.label }}</option>
                             </select>
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small mb-1">Driver turi</label>
+                            <label class="form-label small mb-1">Driver type</label>
                             <select v-model="filters.driver_type" class="form-select form-select-sm" @change="load(1)">
-                                <option :value="null">Barchasi</option>
+                                <option :value="null">All</option>
                                 <option v-for="item in driverTypes" :key="item.value" :value="item.value">{{ item.label }}</option>
                             </select>
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small mb-1">Min. ball</label>
+                            <label class="form-label small mb-1">Min score</label>
                             <input v-model.number="filters.min_score" type="number" min="0" max="100"
                                    class="form-control form-control-sm" @change="load(1)">
                         </div>
@@ -101,13 +99,13 @@
                         <div class="form-check mb-2">
                             <input id="no-dui" v-model="filters.no_dui" type="checkbox" class="form-check-input"
                                    @change="load(1)">
-                            <label class="form-check-label small" for="no-dui">DUI bo'lmaganlar</label>
+                            <label class="form-check-label small" for="no-dui">No DUI</label>
                         </div>
 
                         <div class="form-check">
                             <input id="hide-dq" v-model="filters.hide_disqualified" type="checkbox"
                                    class="form-check-input" @change="load(1)">
-                            <label class="form-check-label small" for="hide-dq">Knockout'larni yashirish</label>
+                            <label class="form-check-label small" for="hide-dq">Hide knocked out</label>
                         </div>
                     </div>
                 </div>
@@ -116,24 +114,27 @@
             <div class="col-lg-9">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <div class="text-muted small">
-                        <strong>{{ meta.total || 0 }}</strong> driver topildi
-                        <span v-if="meta.qualified !== undefined"> · {{ meta.qualified }} tasi mos keladi</span>
+                        <strong>{{ meta.total || 0 }}</strong> drivers
+                        <span v-if="meta.qualified !== undefined"> · {{ meta.qualified }} qualified</span>
+                        <span v-if="meta.capped_by_plan" class="text-warning">
+                            · capped at {{ meta.plan_limit }} by your plan
+                        </span>
                     </div>
                     <div style="width: 230px">
                         <select v-model="filters.sort" class="form-select form-select-sm" @change="load(1)">
-                            <option value="score">Ball bo'yicha (yuqoridan)</option>
-                            <option value="experience">Tajriba bo'yicha</option>
-                            <option value="safety">Safety bo'yicha (toza)</option>
-                            <option value="date">Yangi qo'shilganlar</option>
-                            <option value="name">Ism bo'yicha</option>
+                            <option value="score">Score, highest first</option>
+                            <option value="experience">Experience</option>
+                            <option value="safety">Safety, cleanest first</option>
+                            <option value="date">Recently added</option>
+                            <option value="name">Name</option>
                         </select>
                     </div>
                 </div>
 
-                <div v-if="loading" class="empty-state">Yuklanmoqda…</div>
+                <div v-if="loading" class="empty-state">Loading…</div>
 
                 <div v-else-if="!rows.length" class="empty-state">
-                    Filtrlarga mos driver topilmadi.
+                    No drivers match these filters.
                 </div>
 
                 <div v-else class="card">
@@ -141,12 +142,12 @@
                         <table class="table align-middle mb-0">
                             <thead>
                                 <tr class="text-muted small">
-                                    <th style="width: 90px">Ball</th>
+                                    <th style="width: 90px">Score</th>
                                     <th>Driver</th>
-                                    <th>Tajriba</th>
+                                    <th>Experience</th>
                                     <th>Safety</th>
-                                    <th>Stabillik</th>
-                                    <th>Holat</th>
+                                    <th>Stability</th>
+                                    <th>Status</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -162,26 +163,30 @@
                                         </div>
                                     </td>
                                     <td>
-                                        {{ row.driver.years_experience }} yil
+                                        {{ row.driver.years_experience }} yrs
                                         <div class="text-muted small">CDL {{ row.driver.cdl_class || '—' }}</div>
                                     </td>
                                     <td>
                                         <span :class="row.driver.accidents_3y ? 'text-danger' : 'text-success'">
-                                            {{ row.driver.accidents_3y }} avariya
+                                            {{ row.driver.accidents_3y }} accidents
                                         </span>
-                                        <div class="text-muted small">{{ row.driver.moving_violations_3y }} violation</div>
+                                        <div class="text-muted small">{{ row.driver.moving_violations_3y }} violations</div>
                                     </td>
                                     <td class="text-muted small">
-                                        {{ row.driver.jobs_last_3_years }} ish / 3 yil
-                                        <div>{{ row.driver.longest_tenure_months }} oy staj</div>
+                                        {{ row.driver.jobs_last_3_years }} jobs / 3 yrs
+                                        <div>{{ row.driver.longest_tenure_months }} mo longest</div>
                                     </td>
                                     <td @click.stop>
-                                        <select :value="row.driver.status" class="form-select form-select-sm"
+                                        <select :value="row.driver.status" class="form-select form-select-sm mb-1"
                                                 @change="updateStatus(row, $event.target.value)">
                                             <option v-for="item in driverStatuses" :key="item.value" :value="item.value">
                                                 {{ item.label }}
                                             </option>
                                         </select>
+                                        <button v-if="row.driver.user_id" class="btn btn-sm btn-outline-primary w-100"
+                                                :disabled="contacting === row.driver.id" @click="contact(row)">
+                                            {{ contacting === row.driver.id ? '…' : 'Message' }}
+                                        </button>
                                     </td>
                                 </tr>
                             </tbody>
@@ -192,20 +197,20 @@
                 <nav v-if="meta.last_page > 1" class="mt-3">
                     <ul class="pagination justify-content-center">
                         <li class="page-item" :class="{ disabled: meta.current_page === 1 }">
-                            <button class="page-link" @click="load(meta.current_page - 1)">Oldingi</button>
+                            <button class="page-link" @click="load(meta.current_page - 1)">Previous</button>
                         </li>
                         <li class="page-item disabled">
                             <span class="page-link">{{ meta.current_page }} / {{ meta.last_page }}</span>
                         </li>
                         <li class="page-item" :class="{ disabled: meta.current_page === meta.last_page }">
-                            <button class="page-link" @click="load(meta.current_page + 1)">Keyingi</button>
+                            <button class="page-link" @click="load(meta.current_page + 1)">Next</button>
                         </li>
                     </ul>
                 </nav>
             </div>
         </div>
 
-        <!-- Driver tafsiloti -->
+        <!-- Driver detail -->
         <div v-if="selected" class="modal d-block" tabindex="-1" style="background: rgba(15,23,42,.5)"
              @click.self="selected = null">
             <div class="modal-dialog modal-lg modal-dialog-scrollable">
@@ -227,19 +232,19 @@
 
                         <DriverSummary :driver="selected.driver" class="mb-4" />
 
-                        <h6>Ball taqsimoti</h6>
+                        <h6>Score breakdown</h6>
                         <ScoreBreakdown :rows="selected.breakdown" :knockouts="selected.knockouts" />
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Qo'lda driver qo'shish -->
+        <!-- Manual driver entry -->
         <div v-if="showAddForm" class="modal d-block" tabindex="-1" style="background: rgba(15,23,42,.5)">
             <div class="modal-dialog modal-xl modal-dialog-scrollable">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Qo'lda driver qo'shish</h5>
+                        <h5 class="modal-title">Add a driver</h5>
                         <button type="button" class="btn-close" @click="showAddForm = false"></button>
                     </div>
                     <form @submit.prevent="saveDriver">
@@ -248,9 +253,9 @@
                             <DriverForm v-model="newDriver" />
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-light" @click="showAddForm = false">Bekor</button>
+                            <button type="button" class="btn btn-light" @click="showAddForm = false">Cancel</button>
                             <button class="btn btn-primary" :disabled="saving">
-                                {{ saving ? 'Saqlanmoqda…' : 'Qo\'shish' }}
+                                {{ saving ? 'Saving…' : 'Add driver' }}
                             </button>
                         </div>
                     </form>
@@ -343,6 +348,7 @@ export default {
             driverStatuses: DRIVER_STATUSES,
             loading: true,
             saving: false,
+            contacting: null,
             error: null,
             formError: null,
             errors: {},
@@ -360,7 +366,7 @@ export default {
             this.loading = true;
             this.error = null;
 
-            // Bo'sh filtrlarni yubormaymiz — server validatsiyasi null'ni qabul qilmaydi.
+            // Empty filters are dropped; the server rejects nulls.
             const params = Object.fromEntries(
                 Object.entries({ ...this.filters, page })
                     .filter(([, value]) => value !== null && value !== '' && value !== false)
@@ -403,6 +409,24 @@ export default {
                 this.errors = e.errors || {};
             } finally {
                 this.saving = false;
+            }
+        },
+
+        /** Open a thread with this driver and jump straight into it. */
+        async contact(row) {
+            this.contacting = row.driver.id;
+            this.error = null;
+
+            try {
+                const { data } = await api.post('/carrier/conversations', {
+                    driver_profile_id: row.driver.id,
+                });
+
+                this.$router.push({ name: 'conversations', query: { id: data.conversation.id } });
+            } catch (e) {
+                this.error = e.friendly;
+            } finally {
+                this.contacting = null;
             }
         },
 

@@ -10,7 +10,7 @@ use App\Services\DriverScoringService;
 use Illuminate\Http\Request;
 
 /**
- * Driver tomoni: vakansiyalarni ko'rish va ariza berish (Indeed'dagi kabi).
+ * The driver side: browse jobs and apply.
  */
 class JobSearchController extends Controller
 {
@@ -53,20 +53,20 @@ class JobSearchController extends Controller
         ]);
 
         if (! $jobPost->is_open) {
-            return response()->json(['message' => 'Bu vakansiya yopilgan.'], 422);
+            return response()->json(['message' => 'This job is closed.'], 422);
         }
 
         $profile = $this->profileFor($request);
 
         if (! $profile) {
-            return response()->json(['message' => 'Avval driver profilingizni to\'ldiring.'], 422);
+            return response()->json(['message' => 'Fill in your driver profile first.'], 422);
         }
 
         if (Application::where('job_post_id', $jobPost->id)->where('driver_profile_id', $profile->id)->exists()) {
-            return response()->json(['message' => 'Siz bu vakansiyaga allaqachon ariza bergansiz.'], 422);
+            return response()->json(['message' => 'You have already applied to this job.'], 422);
         }
 
-        // Ariza berilgan paytdagi ball snapshot qilinadi — keyin profil o'zgarsa ham tarix saqlanadi.
+        // The score is snapshotted at application time, so history survives later profile edits.
         $result = $scoring
             ->withOverrides($jobPost->carrier->scoring_overrides)
             ->withOverrides($jobPost->requirements)
@@ -83,7 +83,7 @@ class JobSearchController extends Controller
         ]);
 
         return response()->json([
-            'message'     => 'Ariza yuborildi.',
+            'message'     => 'Application sent.',
             'application' => $application,
         ], 201);
     }
@@ -102,7 +102,7 @@ class JobSearchController extends Controller
             ->latest()
             ->paginate(20);
 
-        // Driver o'zining ichki ballini ko'rmasligi kerak — faqat status.
+        // Drivers see the status, never the internal score.
         $applications->getCollection()->transform(function (Application $application) {
             return $application->makeHidden(['score', 'tier', 'score_breakdown', 'knockouts']);
         });

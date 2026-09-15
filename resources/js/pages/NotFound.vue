@@ -1,8 +1,8 @@
 <template>
     <div class="empty-state">
         <h3 class="mb-2">404</h3>
-        <p class="mb-3">Bunday sahifa topilmadi.</p>
-        <router-link :to="auth.homeRoute" class="btn btn-primary">Bosh sahifaga</router-link>
+        <p class="mb-3">That page does not exist.</p>
+        <router-link :to="auth.homeRoute" class="btn btn-primary">Go home</router-link>
     </div>
 </template>
 

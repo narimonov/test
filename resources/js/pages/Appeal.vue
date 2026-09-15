@@ -1,16 +1,16 @@
 <template>
     <div class="row justify-content-center">
         <div class="col-lg-7">
-            <h4 class="mb-1">Blacklist va apelyatsiya</h4>
+            <h4 class="page-title mb-1">Standing &amp; appeals</h4>
             <p class="text-muted small mb-4">
-                Qoniqarsiz baholar chegaradan oshsa akkaunt blacklist'ga tushadi.
-                Adolatsiz deb hisoblasangiz, apelyatsiya bering — admin ko'rib chiqadi.
+                Too many unsatisfactory reviews and an account is blacklisted. If you think that
+                is unfair, appeal it — an admin reviews every appeal.
             </p>
 
             <AlertBox :message="error" :errors="errors" />
             <AlertBox :message="notice" variant="success" />
 
-            <div v-if="loading" class="empty-state">Yuklanmoqda…</div>
+            <div v-if="loading" class="empty-state">Loading…</div>
 
             <template v-else>
                 <div class="card mb-4">
@@ -18,25 +18,25 @@
                         <div v-if="isBlacklisted" class="d-flex align-items-start gap-3">
                             <span class="badge bg-danger">Blacklist</span>
                             <div>
-                                <div class="fw-semibold">Akkauntingiz cheklangan</div>
-                                <div class="text-muted small">Sabab: {{ blacklistReason || '—' }}</div>
+                                <div class="fw-semibold">This account is restricted</div>
+                                <div class="text-muted small">Reason: {{ blacklistReason || '—' }}</div>
                             </div>
                         </div>
                         <div v-else class="d-flex align-items-center gap-3">
-                            <span class="badge bg-success">Toza</span>
-                            <div class="text-muted small">Akkauntingiz cheklanmagan.</div>
+                            <span class="badge bg-success">Clear</span>
+                            <div class="text-muted small">No restrictions on this account.</div>
                         </div>
                     </div>
                 </div>
 
                 <div v-if="isBlacklisted && !hasPending" class="card mb-4">
                     <div class="card-body">
-                        <h6 class="mb-3">Apelyatsiya berish</h6>
+                        <h6 class="mb-3">Submit an appeal</h6>
                         <form @submit.prevent="submit">
                             <textarea v-model="reason" rows="5" class="form-control mb-3" minlength="20"
-                                      placeholder="Nima bo'lganini batafsil yozing — nega baholar adolatsiz deb hisoblaysiz"></textarea>
+                                      placeholder="Explain what happened and why you believe the reviews are unfair"></textarea>
                             <button class="btn btn-primary" :disabled="saving">
-                                {{ saving ? 'Yuborilmoqda…' : 'Yuborish' }}
+                                {{ saving ? 'Sending…' : 'Submit' }}
                             </button>
                         </form>
                     </div>
@@ -44,9 +44,9 @@
 
                 <div class="card">
                     <div class="card-body">
-                        <h6 class="mb-3">Apelyatsiyalar tarixi</h6>
+                        <h6 class="mb-3">Appeal history</h6>
 
-                        <div v-if="!appeals.length" class="text-muted small">Hali apelyatsiya bermagansiz.</div>
+                        <div v-if="!appeals.length" class="text-muted small">No appeals yet.</div>
 
                         <div v-for="appeal in appeals" :key="appeal.id" class="py-2 border-bottom">
                             <div class="d-flex justify-content-between">
@@ -55,7 +55,7 @@
                             </div>
                             <p class="small mt-2 mb-1">{{ appeal.reason }}</p>
                             <p v-if="appeal.decision_note" class="small text-muted mb-0">
-                                Admin izohi: {{ appeal.decision_note }}
+                                Admin note: {{ appeal.decision_note }}
                             </p>
                         </div>
                     </div>
@@ -137,7 +137,7 @@ export default {
         },
 
         statusLabel(status) {
-            return { pending: 'Ko\'rib chiqilmoqda', approved: 'Qabul qilindi', rejected: 'Rad etildi' }[status] || status;
+            return { pending: 'Under review', approved: 'Approved', rejected: 'Rejected' }[status] || status;
         },
 
         statusVariant(status) {
@@ -145,7 +145,7 @@ export default {
         },
 
         date(value) {
-            return value ? new Date(value).toLocaleDateString('uz-UZ') : '—';
+            return value ? new Date(value).toLocaleDateString('en-US') : '—';
         },
     },
 };

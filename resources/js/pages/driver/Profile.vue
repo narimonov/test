@@ -2,14 +2,14 @@
     <div>
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
-                <h4 class="mb-1">Driver profilim</h4>
+                <h4 class="page-title mb-1">My profile</h4>
                 <p class="text-muted small mb-0">
-                    Profil to'liq bo'lsa kompaniyalar sizni tezroq topadi.
+                    The fuller your profile, the sooner carriers find you.
                 </p>
             </div>
             <div v-if="completeness" class="text-end">
                 <div class="fw-bold">{{ completeness.percent }}%</div>
-                <div class="small text-muted">to'ldirilgan</div>
+                <div class="label-mono">complete</div>
             </div>
         </div>
 
@@ -20,7 +20,7 @@
         <AlertBox :message="error" :errors="errors" />
         <AlertBox :message="notice" variant="success" />
 
-        <div v-if="loading" class="empty-state">Yuklanmoqda…</div>
+        <div v-if="loading" class="empty-state">Loading…</div>
 
         <div v-else class="row g-4">
             <div class="col-lg-8">
@@ -34,12 +34,12 @@
                             <div class="form-check mb-3">
                                 <input id="searchable" v-model="form.is_searchable" type="checkbox" class="form-check-input">
                                 <label class="form-check-label" for="searchable">
-                                    Kompaniyalar meni driver bazasidan topa olsin
+                                    Let carriers find me in the driver pool
                                 </label>
                             </div>
 
                             <button class="btn btn-primary" :disabled="saving">
-                                {{ saving ? 'Saqlanmoqda…' : 'Saqlash' }}
+                                {{ saving ? 'Saving…' : 'Save' }}
                             </button>
                         </form>
                     </div>
@@ -49,14 +49,14 @@
             <div class="col-lg-4">
                 <div class="card filter-panel">
                     <div class="card-body">
-                        <h6 class="mb-3">Profilingiz bahosi</h6>
+                        <h6 class="mb-3">How you score</h6>
 
                         <div v-if="selfScore" class="d-flex align-items-center gap-3 mb-3">
                             <ScorePill :score="selfScore.score" :tier="selfScore.tier"
                                        :disqualified="selfScore.disqualified" />
                             <div class="small text-muted">
-                                Bu — standart kriteriyalar bo'yicha taxminiy baho.
-                                Har bir kompaniya o'z vaznlarini qo'yishi mumkin.
+                                An estimate against the default criteria. Each carrier can
+                                weight things differently.
                             </div>
                         </div>
 
@@ -64,7 +64,7 @@
                                         :knockouts="selfScore.knockouts" />
 
                         <div v-if="completeness?.missing?.length" class="mt-3">
-                            <div class="small fw-semibold mb-1">To'ldirilmagan maydonlar</div>
+                            <div class="label-mono mb-1">Still missing</div>
                             <ul class="small text-muted mb-0 ps-3">
                                 <li v-for="field in completeness.missing" :key="field">{{ fieldLabel(field) }}</li>
                             </ul>
@@ -84,19 +84,19 @@ import ScorePill from '../../components/ScorePill.vue';
 import ScoreBreakdown from '../../components/ScoreBreakdown.vue';
 
 const FIELD_LABELS = {
-    first_name: 'Ism',
-    last_name: 'Familiya',
-    phone: 'Telefon',
-    city: 'Shahar',
-    state: 'Shtat',
-    cdl_class: 'CDL klass',
-    cdl_expires_at: 'CDL muddati',
-    years_experience: 'Tajriba',
-    equipment_experience: 'Equipment tajribasi',
-    driver_type: 'Driver turi',
-    preferred_route: 'Route turi',
-    work_authorization: 'Ishlash huquqi',
-    available_from: 'Ishga chiqa oladigan sana',
+    first_name: 'First name',
+    last_name: 'Last name',
+    phone: 'Phone',
+    city: 'City',
+    state: 'State',
+    cdl_class: 'CDL class',
+    cdl_expires_at: 'CDL expiry',
+    years_experience: 'Experience',
+    equipment_experience: 'Equipment experience',
+    driver_type: 'Driver type',
+    preferred_route: 'Route type',
+    work_authorization: 'Work authorisation',
+    available_from: 'Available from',
 };
 
 export default {
@@ -152,7 +152,7 @@ export default {
             try {
                 const { data } = await api.put('/driver/profile', this.payload());
                 this.apply(data);
-                this.notice = 'Profil saqlandi.';
+                this.notice = 'Profile saved.';
             } catch (e) {
                 this.error = e.friendly;
                 this.errors = e.errors || {};
@@ -161,7 +161,7 @@ export default {
             }
         },
 
-        /** Server qabul qilmaydigan maydonlarni (id, timestamps) yubormaymiz. */
+        /** Strip fields the server does not accept (id, timestamps). */
         payload() {
             const { id, user_id, created_by_user_id, source, status, full_name,
                 created_at, updated_at, resume_path, ...rest } = this.form;

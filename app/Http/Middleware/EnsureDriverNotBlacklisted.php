@@ -6,7 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 
 /**
- * Blacklist'dagi driver ariza bera olmaydi (profilini ko'rishi mumkin).
+ * A blacklisted driver cannot apply, but can still see their own profile.
  */
 class EnsureDriverNotBlacklisted
 {
@@ -16,7 +16,7 @@ class EnsureDriverNotBlacklisted
 
         if ($profile && $profile->is_blacklisted) {
             return response()->json([
-                'message' => 'Siz blacklist\'dasiz. Apelyatsiya berishingiz mumkin.',
+                'message' => 'Your account is blacklisted. You can submit an appeal.',
                 'code'    => 'driver_blacklisted',
                 'reason'  => $profile->blacklist_reason,
             ], 403);

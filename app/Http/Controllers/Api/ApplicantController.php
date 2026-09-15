@@ -12,19 +12,19 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Carrier tomoni: vakansiyaga kelgan arizalarni ball bo'yicha saralab ko'rsatadi.
+ * The carrier side: applications for a job, ranked by score.
  */
 class ApplicantController extends Controller
 {
     /**
-     * Bitta vakansiyaning arizachilari, ball bo'yicha tartiblangan.
+     * Applicants for one job, ordered by score.
      *
      * sort = score | date | experience | safety
      */
     public function index(Request $request, JobPost $jobPost, DriverScoringService $scoring)
     {
         $carrier = $this->carrierFor($request);
-        abort_unless($jobPost->carrier_id === $carrier->id, 403, 'Bu vakansiya sizniki emas.');
+        abort_unless($jobPost->carrier_id === $carrier->id, 403, 'This job is not yours.');
 
         $filters = $request->validate([
             'sort'           => ['nullable', Rule::in(['score', 'date', 'experience', 'safety'])],
@@ -45,7 +45,7 @@ class ApplicantController extends Controller
             ->get();
 
         $rows = $applications->map(function (Application $application) use ($engine, $filters) {
-            // Profil ariza berilgandan keyin o'zgargan bo'lishi mumkin — qayta hisoblash opsiyasi.
+            // A profile may have changed since the application; recalculating catches that.
             if (! empty($filters['recalculate'])) {
                 $result = $engine->score($application->driverProfile);
                 $application->forceFill([
@@ -99,7 +99,7 @@ class ApplicantController extends Controller
     public function updateStatus(Request $request, Application $application)
     {
         $carrier = $this->carrierFor($request);
-        abort_unless($application->jobPost->carrier_id === $carrier->id, 403, 'Bu ariza sizniki emas.');
+        abort_unless($application->jobPost->carrier_id === $carrier->id, 403, 'This application is not yours.');
 
         $data = $request->validate([
             'status' => ['required', Rule::in(['applied', 'screening', 'interview', 'hired', 'rejected'])],
@@ -114,24 +114,24 @@ class ApplicantController extends Controller
         $application->status = $data['status'];
         $application->save();
 
-        // Driver profilining umumiy holati ham arizadan orqada qolmasin.
+        // Keep the driver's overall status in step with the application.
         if (in_array($data['status'], ['hired', 'rejected'], true)) {
             $driver->status = $data['status'];
         }
 
         if ($data['status'] === 'hired') {
-            // Eksklyuzivlik: driver shu kompaniyaga biriktiriladi.
+            // Exclusivity: the driver is now bound to this carrier.
             $driver->hired_carrier_id = $carrier->id;
             $driver->hired_at = now();
 
-            // Boshqa kompaniyalardagi ochiq arizalari yopiladi.
+            // Their open applications elsewhere are closed.
             Application::where('driver_profile_id', $driver->id)
                 ->where('id', '!=', $application->id)
                 ->whereNotIn('status', ['hired', 'rejected'])
                 ->update(['status' => 'rejected']);
         }
 
-        // "hired" holatidan qaytarilsa biriktirish ham bekor bo'ladi.
+        // Reverting away from "hired" releases the driver again.
         if ($data['status'] !== 'hired' && $driver->hired_carrier_id === $carrier->id) {
             $driver->hired_carrier_id = null;
             $driver->hired_at = null;
@@ -143,7 +143,7 @@ class ApplicantController extends Controller
     }
 
     /**
-     * Bitta kompaniya yollagan driverni boshqasi yollay olmaydi.
+     * A driver hired by one carrier cannot be hired by another.
      *
      * @throws ValidationException
      */
@@ -151,13 +151,13 @@ class ApplicantController extends Controller
     {
         if ($driver->is_blacklisted) {
             throw ValidationException::withMessages([
-                'status' => ['Bu driver blacklist\'da — ishga olib bo\'lmaydi.'],
+                'status' => ['This driver is blacklisted and cannot be hired.'],
             ]);
         }
 
         if ($driver->hired_carrier_id !== null && $driver->hired_carrier_id !== $carrierId) {
             throw ValidationException::withMessages([
-                'status' => ['Bu driver boshqa kompaniya tomonidan allaqachon ishga olingan.'],
+                'status' => ['This driver has already been hired by another carrier.'],
             ]);
         }
     }
@@ -177,7 +177,7 @@ class ApplicantController extends Controller
 
             case 'score':
             default:
-                // Disqualified bo'lganlar har doim pastda.
+                // Disqualified rows always sink to the bottom.
                 return $rows->sortBy(fn ($row) => [$row['disqualified'] ? 1 : 0, -1 * (int) ($row['score'] ?? 0)]);
         }
     }

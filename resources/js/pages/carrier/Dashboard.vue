@@ -2,20 +2,20 @@
     <div>
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h4 class="mb-1">{{ carrier?.company_name || 'Dashboard' }}</h4>
-                <p class="text-muted small mb-0">Recruiting jarayoni umumiy ko'rinishda</p>
+                <h4 class="page-title">{{ carrier?.company_name || 'Dashboard' }}</h4>
+                <p class="page-lede">Where your hiring stands right now</p>
             </div>
-            <router-link :to="{ name: 'carrier.jobs' }" class="btn btn-primary">Vakansiya joylash</router-link>
+            <router-link :to="{ name: 'carrier.jobs' }" class="btn btn-primary">Post a job</router-link>
         </div>
 
         <AlertBox :message="error" />
 
         <div v-if="!auth.hasSubscription" class="alert alert-warning">
-            Obuna aktiv emas — arizachilar va driver bazasi yopiq.
-            <router-link :to="{ name: 'carrier.billing' }" class="alert-link">Obunani ochish</router-link>
+            No active plan — applicants and the driver pool are closed.
+            <router-link :to="{ name: 'carrier.billing' }" class="alert-link">Choose a plan</router-link>
         </div>
 
-        <div v-if="loading" class="empty-state">Yuklanmoqda…</div>
+        <div v-if="loading" class="empty-state">Loading…</div>
 
         <template v-else>
             <div class="row g-3 mb-4">
@@ -23,7 +23,7 @@
                     <div class="card stat-card h-100">
                         <div class="card-body">
                             <div class="stat-value">{{ stats.open_jobs }}</div>
-                            <div class="stat-label">Ochiq vakansiya</div>
+                            <div class="stat-label">Open jobs</div>
                         </div>
                     </div>
                 </div>
@@ -31,7 +31,7 @@
                     <div class="card stat-card h-100">
                         <div class="card-body">
                             <div class="stat-value">{{ stats.applications }}</div>
-                            <div class="stat-label">Jami ariza</div>
+                            <div class="stat-label">Applications</div>
                         </div>
                     </div>
                 </div>
@@ -39,7 +39,7 @@
                     <div class="card stat-card h-100">
                         <div class="card-body">
                             <div class="stat-value">{{ stats.new_this_week }}</div>
-                            <div class="stat-label">Shu haftada</div>
+                            <div class="stat-label">This week</div>
                         </div>
                     </div>
                 </div>
@@ -47,7 +47,7 @@
                     <div class="card stat-card h-100">
                         <div class="card-body">
                             <div class="stat-value text-success">{{ stats.by_tier?.A || 0 }}</div>
-                            <div class="stat-label">A darajali driver</div>
+                            <div class="stat-label">A-grade drivers</div>
                         </div>
                     </div>
                 </div>
@@ -57,7 +57,7 @@
                 <div class="col-lg-6">
                     <div class="card h-100">
                         <div class="card-body">
-                            <h6 class="mb-3">Arizalar holati bo'yicha</h6>
+                            <h6 class="mb-3">Applications by status</h6>
                             <div v-for="status in statuses" :key="status.value"
                                  class="d-flex justify-content-between py-1 border-bottom">
                                 <span>{{ status.label }}</span>
@@ -69,14 +69,14 @@
                 <div class="col-lg-6">
                     <div class="card h-100">
                         <div class="card-body">
-                            <h6 class="mb-3">Ball darajalari bo'yicha</h6>
+                            <h6 class="mb-3">By score grade</h6>
                             <div v-for="tier in ['A', 'B', 'C', 'D']" :key="tier"
                                  class="d-flex justify-content-between py-1 border-bottom">
-                                <span>{{ tier }} daraja</span>
+                                <span>Grade {{ tier }}</span>
                                 <span class="fw-semibold">{{ stats.by_tier?.[tier] || 0 }}</span>
                             </div>
                             <div class="d-flex justify-content-between py-1 text-danger">
-                                <span>Knockout (rad)</span>
+                                <span>Knocked out</span>
                                 <span class="fw-semibold">{{ stats.by_tier?.[''] || stats.by_tier?.null || 0 }}</span>
                             </div>
                         </div>

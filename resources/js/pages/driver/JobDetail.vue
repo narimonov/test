@@ -4,7 +4,7 @@
             <AlertBox :message="error" />
             <AlertBox :message="notice" variant="success" />
 
-            <div v-if="loading" class="empty-state">Yuklanmoqda…</div>
+            <div v-if="loading" class="empty-state">Loading…</div>
 
             <div v-else-if="job" class="card">
                 <div class="card-body p-4">
@@ -25,21 +25,21 @@
                     <p class="mb-4" style="white-space: pre-line">{{ job.description }}</p>
 
                     <div v-if="job.carrier?.about" class="border-top pt-3 mb-4">
-                        <h6>Kompaniya haqida</h6>
+                        <h6>About the company</h6>
                         <p class="text-muted small mb-0" style="white-space: pre-line">{{ job.carrier.about }}</p>
                     </div>
 
                     <div class="border-top pt-3">
-                        <label class="form-label">Qo'shimcha izoh <span class="text-muted small">(ixtiyoriy)</span></label>
+                        <label class="form-label">Note to the carrier <span class="text-muted small">(optional)</span></label>
                         <textarea v-model="coverNote" rows="3" class="form-control mb-3"
-                                  placeholder="O'zingiz haqingizda qisqacha"></textarea>
+                                  placeholder="A short note about yourself"></textarea>
 
                         <button class="btn btn-primary" :disabled="applying || applied" @click="apply">
-                            <template v-if="applied">Ariza yuborilgan</template>
-                            <template v-else>{{ applying ? 'Yuborilmoqda…' : 'Ariza berish' }}</template>
+                            <template v-if="applied">Application sent</template>
+                            <template v-else>{{ applying ? 'Sending…' : 'Apply' }}</template>
                         </button>
 
-                        <router-link :to="{ name: 'driver.jobs' }" class="btn btn-link">Orqaga</router-link>
+                        <router-link :to="{ name: 'driver.jobs' }" class="btn btn-link">Back</router-link>
                     </div>
                 </div>
             </div>
@@ -111,11 +111,11 @@ export default {
             try {
                 await api.post(`/driver/jobs/${this.job.id}/apply`, { cover_note: this.coverNote || null });
                 this.applied = true;
-                this.notice = 'Arizangiz yuborildi. Kompaniya siz bilan bog\'lanadi.';
+                this.notice = 'Application sent. The carrier will get in touch.';
             } catch (e) {
                 this.error = e.friendly;
 
-                // Tasdiqlanmagan akkaunt ariza bera olmaydi.
+                // An unverified account cannot apply.
                 if (e.code === 'verification_required') {
                     this.$router.push({ name: 'verify' });
                 }

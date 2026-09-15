@@ -6,8 +6,8 @@ use Closure;
 use Illuminate\Http\Request;
 
 /**
- * Kompaniya FMCSA kodi bilan tasdiqlanmaguncha ilovadan foydalana olmaydi.
- * Authority keyinchalik to'xtatilsa ham kirish yopiladi.
+ * A carrier cannot use the app until it confirms the FMCSA code, and access
+ * closes again if its authority later lapses.
  */
 class EnsureCarrierVerifiedWithFmcsa
 {
@@ -17,28 +17,28 @@ class EnsureCarrierVerifiedWithFmcsa
 
         if (! $carrier || $carrier->fmcsa_verified_at === null) {
             return response()->json([
-                'message' => 'Kompaniyangizni FMCSA kodi bilan tasdiqlang.',
+                'message' => 'Verify your company with the FMCSA code.',
                 'code'    => 'fmcsa_verification_required',
             ], 403);
         }
 
         if (! $carrier->allowed_to_operate) {
             return response()->json([
-                'message' => 'FMCSA bo\'yicha kompaniyangiz hozir faol emas (authority to\'xtatilgan).',
+                'message' => 'FMCSA shows your company is not currently allowed to operate.',
                 'code'    => 'fmcsa_not_active',
             ], 403);
         }
 
         if ($carrier->is_blocked) {
             return response()->json([
-                'message' => 'Kompaniya akkaunti bloklangan.' . ($carrier->blocked_reason ? ' Sabab: ' . $carrier->blocked_reason : ''),
+                'message' => 'This company account is blocked.' . ($carrier->blocked_reason ? ' Reason: ' . $carrier->blocked_reason : ''),
                 'code'    => 'carrier_blocked',
             ], 403);
         }
 
         if ($carrier->is_blacklisted) {
             return response()->json([
-                'message' => 'Kompaniya blacklist\'da. Apelyatsiya berishingiz mumkin.',
+                'message' => 'This company is blacklisted. You can submit an appeal.',
                 'code'    => 'carrier_blacklisted',
                 'reason'  => $carrier->blacklist_reason,
             ], 403);

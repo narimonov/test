@@ -1,0 +1,21 @@
+{
+    "name": "DriverHub — CDL driver recruiting",
+    "short_name": "DriverHub",
+    "description": "Score, screen and hire CDL drivers against criteria you set.",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "portrait-primary",
+    "background_color": "#0e141b",
+    "theme_color": "#0e141b",
+    "categories": ["business", "productivity"],
+    "icons": [
+        { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+        { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+        { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    ],
+    "shortcuts": [
+        { "name": "Messages", "url": "/messages" },
+        { "name": "Driver pool", "url": "/carrier/drivers" }
+    ]
+}

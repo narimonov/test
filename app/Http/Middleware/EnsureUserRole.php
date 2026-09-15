@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 class EnsureUserRole
 {
     /**
-     * Foydalanuvchi rolini tekshiradi: 'role:driver', 'role:carrier,admin'
+     * Checks the user's role: 'role:driver', 'role:carrier,admin'
      */
     public function handle(Request $request, Closure $next, ...$roles)
     {
@@ -16,7 +16,7 @@ class EnsureUserRole
 
         if (! $user || ! in_array($user->role, $roles, true)) {
             return response()->json([
-                'message' => 'Bu bo\'limga ruxsat yo\'q.',
+                'message' => 'You do not have access to this area.',
             ], 403);
         }
 

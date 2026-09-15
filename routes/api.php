@@ -1,19 +1,27 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\AdminModerationController;
+use App\Http\Controllers\Api\Admin\AdminReviewController;
 use App\Http\Controllers\Api\Admin\AdminOverviewController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\ApplicantController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\BlacklistAppealController;
 use App\Http\Controllers\Api\CarrierController;
+use App\Http\Controllers\Api\ConversationController;
 use App\Http\Controllers\Api\DriverDocumentController;
 use App\Http\Controllers\Api\DriverProfileController;
 use App\Http\Controllers\Api\JobPostController;
 use App\Http\Controllers\Api\JobSearchController;
+use App\Http\Controllers\Api\MatchingController;
+use App\Http\Controllers\Api\PrivacyController;
+use App\Http\Controllers\Api\RecruitingRequestController;
 use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\ScoringController;
+use App\Http\Controllers\Api\SupportController;
 use App\Http\Controllers\Api\TalentPoolController;
+use App\Http\Controllers\Api\TelegramWebhookController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -21,6 +29,14 @@ use Illuminate\Support\Facades\Route;
 | API Routes — SPA shu endpointlar bilan ishlaydi
 |--------------------------------------------------------------------------
 */
+
+/*
+| Public: the privacy notice has to be readable before signing up, and the
+| gateway callbacks authenticate themselves by signature.
+*/
+Route::get('privacy', [PrivacyController::class, 'show']);
+Route::post('payments/{provider}/callback', [BillingController::class, 'callback']);
+Route::post('telegram/webhook', TelegramWebhookController::class);
 
 Route::prefix('auth')->group(function () {
     Route::post('register', [AuthController::class, 'register']);
@@ -56,6 +72,28 @@ Route::middleware(['auth:sanctum', 'not.blocked'])->group(function () {
 
     Route::get('reviews', [ReviewController::class, 'index']);
     Route::post('reviews', [ReviewController::class, 'store']);
+    Route::get('reviews/mine', [ReviewController::class, 'mine']);
+    Route::get('review-proofs/{reviewProof}', [ReviewController::class, 'downloadProof']);
+
+    Route::post('privacy/accept', [PrivacyController::class, 'accept']);
+
+    /*
+    | Support widget — available on every page, for every role.
+    */
+    Route::prefix('support')->group(function () {
+        Route::get('/', [SupportController::class, 'show']);
+        Route::post('/', [SupportController::class, 'store']);
+        Route::get('poll', [SupportController::class, 'poll']);
+        Route::post('escalate', [SupportController::class, 'escalate']);
+    });
+
+    /*
+    | Carrier <-> driver chat.
+    */
+    Route::get('conversations', [ConversationController::class, 'index']);
+    Route::get('conversations/{conversation}', [ConversationController::class, 'show']);
+    Route::post('conversations/{conversation}/messages', [ConversationController::class, 'storeMessage']);
+    Route::get('attachments/{attachment}', [ConversationController::class, 'downloadAttachment']);
 
     /*
     | Driver tomoni
@@ -89,8 +127,15 @@ Route::middleware(['auth:sanctum', 'not.blocked'])->group(function () {
             Route::put('profile', [CarrierController::class, 'update']);
             Route::get('dashboard', [CarrierController::class, 'dashboard']);
 
-            Route::post('subscription', [CarrierController::class, 'subscribe']);
+            Route::get('plans', [BillingController::class, 'plans']);
+            Route::post('checkout', [BillingController::class, 'checkout']);
+            Route::post('checkout/confirm', [BillingController::class, 'confirmFake']);
             Route::delete('subscription', [CarrierController::class, 'cancelSubscription']);
+
+            Route::post('conversations', [ConversationController::class, 'store']);
+
+            Route::get('recruiting-requests', [RecruitingRequestController::class, 'index']);
+            Route::post('recruiting-requests', [RecruitingRequestController::class, 'store']);
 
             Route::put('scoring/overrides', [ScoringController::class, 'updateOverrides']);
 
@@ -101,6 +146,7 @@ Route::middleware(['auth:sanctum', 'not.blocked'])->group(function () {
             */
             Route::middleware(['account.verified', 'carrier.subscribed'])->group(function () {
                 Route::get('jobs/{jobPost}/applicants', [ApplicantController::class, 'index']);
+                Route::get('jobs/{jobPost}/matches', MatchingController::class);
                 Route::put('applications/{application}/status', [ApplicantController::class, 'updateStatus']);
 
                 Route::get('drivers', [TalentPoolController::class, 'index']);
@@ -127,6 +173,10 @@ Route::middleware(['auth:sanctum', 'not.blocked'])->group(function () {
 
         Route::get('appeals', [AdminModerationController::class, 'appeals']);
         Route::post('appeals/{appeal}/decision', [AdminModerationController::class, 'decideAppeal']);
+
+        Route::get('reviews', [AdminReviewController::class, 'index']);
+        Route::post('reviews/{review}/contacted', [AdminReviewController::class, 'markContacted']);
+        Route::post('reviews/{review}/decision', [AdminReviewController::class, 'decide']);
 
         Route::post('blacklist', [AdminModerationController::class, 'setBlacklist']);
         Route::delete('reviews/{review}', [AdminModerationController::class, 'removeReview']);

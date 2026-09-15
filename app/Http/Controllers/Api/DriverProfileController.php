@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 
 class DriverProfileController extends Controller
 {
-    /** Driver o'z profilini ko'radi. */
+    /** The driver's own profile. */
     public function show(Request $request, DriverScoringService $scoring)
     {
         $profile = $this->profileFor($request);
@@ -41,7 +41,7 @@ class DriverProfileController extends Controller
     }
 
     /**
-     * Driver profili uchun validatsiya — recruiter qo'lda kiritishda ham ishlatiladi.
+     * Validation for a driver profile, shared with manual recruiter entry.
      */
     public static function rules(bool $requireName = true): array
     {
@@ -99,8 +99,8 @@ class DriverProfileController extends Controller
     }
 
     /**
-     * Tajriba CDL olingan sanaga mos kelishini tekshiruvchi qoidani qo'shadi.
-     * So'rovda issued date bo'lmasa saqlangan qiymat ishlatiladi.
+     * Adds the rule that checks experience against the CDL issue date.
+     * Falls back to the stored issue date when the request omits it.
      */
     public static function rulesWithCdlCheck(Request $request, bool $requireName, DriverProfile $existing = null): array
     {
@@ -129,7 +129,7 @@ class DriverProfileController extends Controller
     }
 
     /**
-     * Profil to'ldirilganlik foizi — driverga "profilingni tugat" deyish uchun.
+     * How complete the profile is, so we can nudge for the rest.
      */
     protected function completeness(DriverProfile $profile): array
     {

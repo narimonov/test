@@ -36,7 +36,38 @@ class CarrierFmcsaVerificationTest extends TestCase
             'password_confirmation' => 'password123',
             'role'                  => 'carrier',
             'dot_number'            => '1234567',
+            'privacy_accepted'      => true,
+            'privacy_version'       => config('privacy.version'),
         ], $overrides);
+    }
+
+    public function test_sign_up_requires_accepting_the_privacy_notice()
+    {
+        $this->postJson('/api/auth/register', $this->payload(['privacy_accepted' => false]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('privacy_accepted');
+
+        $this->assertDatabaseCount('users', 0);
+    }
+
+    public function test_sign_up_records_the_consents_that_were_given()
+    {
+        $this->postJson('/api/auth/register', $this->payload(['sms_consent' => true]))->assertCreated();
+
+        $user = User::first();
+
+        $this->assertNotNull($user->privacy_accepted_at);
+        $this->assertSame(config('privacy.version'), $user->privacy_version);
+        $this->assertNotNull($user->sms_consent_at);
+        $this->assertNotNull($user->consent_ip);
+    }
+
+    public function test_sms_consent_is_not_implied_by_accepting_the_privacy_notice()
+    {
+        $this->postJson('/api/auth/register', $this->payload())->assertCreated();
+
+        // TCPA consent is separate and must be given explicitly.
+        $this->assertNull(User::first()->sms_consent_at);
     }
 
     public function test_carrier_must_supply_an_mc_or_dot_number()

@@ -17,3 +17,5 @@ yarn-error.log
 /public/js/*.map
 /public/css/*.map
 /storage/app/documents/
+/storage/app/conversations/
+/storage/app/reviews/

@@ -3,7 +3,7 @@
         <div class="col-md-5">
             <div class="card">
                 <div class="card-body p-4">
-                    <h4 class="mb-3">Kirish</h4>
+                    <h4 class="page-title mb-3">Sign in</h4>
 
                     <AlertBox :message="error" :errors="errors" />
 
@@ -13,17 +13,17 @@
                             <input v-model="form.email" type="email" class="form-control" required autofocus>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Parol</label>
+                            <label class="form-label">Password</label>
                             <input v-model="form.password" type="password" class="form-control" required>
                         </div>
                         <button class="btn btn-primary w-100" :disabled="loading">
-                            {{ loading ? 'Kirilmoqda…' : 'Kirish' }}
+                            {{ loading ? 'Signing in…' : 'Sign in' }}
                         </button>
                     </form>
 
                     <div class="text-center mt-3 small">
-                        Akkauntingiz yo'qmi?
-                        <router-link :to="{ name: 'register' }">Ro'yxatdan o'tish</router-link>
+                        No account yet?
+                        <router-link :to="{ name: 'register' }">Create one</router-link>
                     </div>
                 </div>
             </div>

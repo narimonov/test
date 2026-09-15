@@ -1,17 +1,43 @@
-// Body
-$body-bg: #f4f6fb;
+// Steel and safety-orange. Industrial, not playful.
+
+// Surfaces
+$body-bg:        #eef1f5;
+$surface:        #ffffff;
+$surface-sunken: #e3e8ef;
+
+// Steel greys
+$steel-900: #0e141b;
+$steel-800: #182230;
+$steel-700: #243142;
+$steel-600: #3a4a5f;
+$steel-400: #7b8b9f;
+$steel-200: #c8d2de;
+
+// Safety orange — used sparingly, for the thing that matters on the screen
+$primary:   #d4560f;
+$secondary: #3a4a5f;
+$success:   #17794a;
+$warning:   #b87503;
+$danger:    #c02929;
+$info:      #1f6f9c;
+
+$dark: $steel-900;
+$light: $surface-sunken;
 
 // Typography
-$font-family-sans-serif: 'Inter', 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-$font-size-base: 0.925rem;
-$line-height-base: 1.6;
+$font-family-sans-serif: 'Barlow', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+$font-family-monospace:  'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+$font-size-base:  0.925rem;
+$line-height-base: 1.55;
+$headings-font-weight: 700;
 
-// Brand
-$primary: #1f4fd8;
-$success: #17935d;
-$warning: #d98b00;
-$danger: #d33b3b;
+// Hard edges — machinery, not marshmallow
+$border-radius:    0.25rem;
+$border-radius-sm: 0.15rem;
+$border-radius-lg: 0.35rem;
 
-$border-radius: 0.6rem;
-$border-radius-sm: 0.4rem;
-$border-radius-lg: 0.9rem;
+$border-color: #d3dae3;
+
+// Layout
+$sidebar-width: 248px;
+$sidebar-width-collapsed: 68px;

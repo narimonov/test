@@ -38,7 +38,7 @@ class AdminUserController extends Controller
         return response()->json($users);
     }
 
-    /** Foydalanuvchini bloklash — barcha tokenlari ham bekor qilinadi. */
+    /** Block a user; this also revokes every token they hold. */
     public function block(Request $request, User $user)
     {
         $data = $request->validate([
@@ -46,7 +46,7 @@ class AdminUserController extends Controller
         ]);
 
         if ($user->isAdmin()) {
-            return response()->json(['message' => 'Admin akkauntini bloklab bo\'lmaydi.'], 422);
+            return response()->json(['message' => 'Admin accounts cannot be blocked.'], 422);
         }
 
         $user->forceFill([
@@ -55,10 +55,10 @@ class AdminUserController extends Controller
             'blocked_by_user_id' => $request->user()->id,
         ])->save();
 
-        // Bloklangan foydalanuvchi ochiq sessiyalar orqali ishlashda davom etmasin.
+        // Stop a blocked user continuing through an open session.
         $user->tokens()->delete();
 
-        return response()->json(['message' => 'Foydalanuvchi bloklandi.', 'user' => $user->fresh()]);
+        return response()->json(['message' => 'User blocked.', 'user' => $user->fresh()]);
     }
 
     public function unblock(User $user)
@@ -69,6 +69,6 @@ class AdminUserController extends Controller
             'blocked_by_user_id' => null,
         ])->save();
 
-        return response()->json(['message' => 'Blok olib tashlandi.', 'user' => $user->fresh()]);
+        return response()->json(['message' => 'User unblocked.', 'user' => $user->fresh()]);
     }
 }

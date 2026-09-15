@@ -1,29 +1,30 @@
 <template>
     <div>
-        <h4 class="mb-3">Ochiq vakansiyalar</h4>
+        <div class="mb-4"><h4 class="page-title">Open jobs</h4>
+            <p class="page-lede">Apply in one click — your profile goes with it.</p></div>
 
         <div class="card mb-4">
             <div class="card-body">
                 <div class="row g-2">
                     <div class="col-md-4">
                         <input v-model="filters.q" type="search" class="form-control"
-                               placeholder="Lavozim, shahar yoki kalit so'z" @keyup.enter="load">
+                               placeholder="Title, city or keyword" @keyup.enter="load">
                     </div>
                     <div class="col-md-2">
                         <select v-model="filters.state" class="form-select" @change="load">
-                            <option :value="null">Barcha shtat</option>
+                            <option :value="null">All states</option>
                             <option v-for="state in states" :key="state" :value="state">{{ state }}</option>
                         </select>
                     </div>
                     <div class="col-md-3">
                         <select v-model="filters.route_type" class="form-select" @change="load">
-                            <option :value="null">Barcha route</option>
+                            <option :value="null">All route types</option>
                             <option v-for="item in routeTypes" :key="item.value" :value="item.value">{{ item.label }}</option>
                         </select>
                     </div>
                     <div class="col-md-3">
                         <select v-model="filters.driver_type" class="form-select" @change="load">
-                            <option :value="null">Barcha driver turi</option>
+                            <option :value="null">All driver types</option>
                             <option v-for="item in driverTypes" :key="item.value" :value="item.value">{{ item.label }}</option>
                         </select>
                     </div>
@@ -33,10 +34,10 @@
 
         <AlertBox :message="error" />
 
-        <div v-if="loading" class="empty-state">Yuklanmoqda…</div>
+        <div v-if="loading" class="empty-state">Loading…</div>
 
         <div v-else-if="!jobs.length" class="empty-state">
-            Hozircha mos vakansiya yo'q. Filtrlarni kengaytirib ko'ring.
+            Nothing matches right now. Try widening the filters.
         </div>
 
         <div v-else class="row g-3">
@@ -48,7 +49,7 @@
                                 <h5 class="mb-1">{{ job.title }}</h5>
                                 <div class="text-muted small">{{ job.carrier?.company_name }}</div>
                             </div>
-                            <span v-if="job.already_applied" class="badge bg-success">Ariza berilgan</span>
+                            <span v-if="job.already_applied" class="badge bg-success">Applied</span>
                         </div>
 
                         <div class="text-muted small mt-2">
@@ -62,7 +63,7 @@
                         <p class="text-muted small mt-2 mb-3">{{ excerpt(job.description) }}</p>
 
                         <router-link :to="{ name: 'driver.job', params: { id: job.id } }" class="btn btn-sm btn-outline-primary">
-                            Batafsil
+                            View
                         </router-link>
                     </div>
                 </div>
@@ -72,13 +73,13 @@
         <nav v-if="meta.last_page > 1" class="mt-4">
             <ul class="pagination justify-content-center">
                 <li class="page-item" :class="{ disabled: meta.current_page === 1 }">
-                    <button class="page-link" @click="go(meta.current_page - 1)">Oldingi</button>
+                    <button class="page-link" @click="go(meta.current_page - 1)">Previous</button>
                 </li>
                 <li class="page-item disabled">
                     <span class="page-link">{{ meta.current_page }} / {{ meta.last_page }}</span>
                 </li>
                 <li class="page-item" :class="{ disabled: meta.current_page === meta.last_page }">
-                    <button class="page-link" @click="go(meta.current_page + 1)">Keyingi</button>
+                    <button class="page-link" @click="go(meta.current_page + 1)">Next</button>
                 </li>
             </ul>
         </nav>

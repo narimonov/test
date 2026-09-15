@@ -1,4 +1,4 @@
-/** Butun ilova bo'ylab ishlatiladigan ro'yxatlar — bitta joyda. */
+/** Option lists used across the app, defined once. */
 
 export const US_STATES = [
     'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL',
@@ -42,29 +42,29 @@ export const WORK_AUTH = [
     { value: 'us_citizen', label: 'US Citizen' },
     { value: 'green_card', label: 'Green Card' },
     { value: 'ead', label: 'EAD / Work Permit' },
-    { value: 'other', label: 'Boshqa' },
+    { value: 'other', label: 'Other' },
 ];
 
 export const SAP_STATUSES = [
-    { value: 'none', label: 'Yo\'q' },
-    { value: 'in_program', label: 'Dasturda' },
-    { value: 'completed', label: 'Tugatgan' },
+    { value: 'none', label: 'None' },
+    { value: 'in_program', label: 'In program' },
+    { value: 'completed', label: 'Completed' },
 ];
 
 export const APPLICATION_STATUSES = [
-    { value: 'applied', label: 'Yangi ariza', variant: 'secondary' },
-    { value: 'screening', label: 'Tekshiruvda', variant: 'info' },
-    { value: 'interview', label: 'Suhbat', variant: 'primary' },
-    { value: 'hired', label: 'Ishga olindi', variant: 'success' },
-    { value: 'rejected', label: 'Rad etildi', variant: 'danger' },
+    { value: 'applied', label: 'New', variant: 'secondary' },
+    { value: 'screening', label: 'Screening', variant: 'info' },
+    { value: 'interview', label: 'Interview', variant: 'primary' },
+    { value: 'hired', label: 'Hired', variant: 'success' },
+    { value: 'rejected', label: 'Rejected', variant: 'danger' },
 ];
 
 export const DRIVER_STATUSES = [
-    { value: 'new', label: 'Yangi', variant: 'secondary' },
-    { value: 'contacted', label: 'Bog\'lanildi', variant: 'info' },
-    { value: 'screening', label: 'Tekshiruvda', variant: 'primary' },
-    { value: 'hired', label: 'Ishga olindi', variant: 'success' },
-    { value: 'rejected', label: 'Rad etildi', variant: 'danger' },
+    { value: 'new', label: 'New', variant: 'secondary' },
+    { value: 'contacted', label: 'Contacted', variant: 'info' },
+    { value: 'screening', label: 'Screening', variant: 'primary' },
+    { value: 'hired', label: 'Hired', variant: 'success' },
+    { value: 'rejected', label: 'Rejected', variant: 'danger' },
 ];
 
 export function labelFor(list, value) {
@@ -77,5 +77,5 @@ export function formatPay(cents, unit) {
     if (unit === 'per_mile') return `$${(cents / 100).toFixed(2)}/mile`;
     if (unit === 'percentage') return `${cents / 100}%`;
 
-    return `$${Math.round(cents / 100).toLocaleString()}/hafta`;
+    return `$${Math.round(cents / 100).toLocaleString()}/week`;
 }

@@ -12,7 +12,7 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 /**
- * Demo ma'lumot — ilovani ochib darrov ko'rish uchun.
+ * Demo data so the app is usable the moment it is installed.
  *
  *   php artisan migrate:fresh --seed
  */
@@ -31,6 +31,12 @@ class DriverHubSeeder extends Seeder
             ]
         );
 
+        $carrierUser->forceFill([
+            'privacy_accepted_at' => now(),
+            'privacy_version'     => config('privacy.version'),
+            'sms_consent_at'      => now(),
+        ])->save();
+
         $carrier = Carrier::updateOrCreate(
             ['user_id' => $carrierUser->id],
             [
@@ -42,12 +48,12 @@ class DriverHubSeeder extends Seeder
                 'city'                    => 'Chicago',
                 'state'                   => 'IL',
                 'fleet_size'              => 62,
-                'about'                   => 'Midwest hududida ishlaydigan reefer va dry van kompaniyasi.',
+                'about'                   => 'Reefer and dry van carrier running the Midwest.',
                 'subscription_plan'       => 'pro',
                 'subscription_status'     => 'active',
                 'subscription_expires_at' => now()->addYear(),
 
-                // Demo uchun FMCSA tekshiruvi o'tgan deb belgilanadi.
+                // Marked as FMCSA-verified for the demo.
                 'fmcsa_legal_name'        => 'SILK ROAD LOGISTICS LLC',
                 'fmcsa_status'            => 'A',
                 'allowed_to_operate'      => true,
@@ -61,8 +67,8 @@ class DriverHubSeeder extends Seeder
         $job = JobPost::updateOrCreate(
             ['carrier_id' => $carrier->id, 'title' => 'OTR CDL-A Driver — Reefer'],
             [
-                'description'   => "Midwest–West Coast yo'nalishi. Haftada 2500–3000 mile. "
-                    . "Yangi Freightliner Cascadia, APU bor. Har 3 haftada uyga.",
+                'description'   => "Midwest to West Coast lanes. 2,500-3,000 miles a week. "
+                    . "Newer Freightliner Cascadia with APU. Home every 3 weeks.",
                 'city'          => 'Chicago',
                 'state'         => 'IL',
                 'route_type'    => 'otr',
@@ -78,7 +84,7 @@ class DriverHubSeeder extends Seeder
         JobPost::updateOrCreate(
             ['carrier_id' => $carrier->id, 'title' => 'Regional Dry Van — Home Weekly'],
             [
-                'description'   => "IL, IN, WI, MI hududi. Har hafta oxiri uyda.",
+                'description'   => "IL, IN, WI and MI. Home every weekend.",
                 'city'          => 'Joliet',
                 'state'         => 'IL',
                 'route_type'    => 'regional',
@@ -91,7 +97,7 @@ class DriverHubSeeder extends Seeder
             ]
         );
 
-        // Driver o'zi ro'yxatdan o'tgani
+        // A driver who signed up themselves
         $driverUser = User::updateOrCreate(
             ['email' => 'driver@example.com'],
             [
@@ -103,11 +109,18 @@ class DriverHubSeeder extends Seeder
             ]
         );
 
+        $driverUser->forceFill([
+            'privacy_accepted_at' => now(),
+            'privacy_version'     => config('privacy.version'),
+            'sms_consent_at'      => now(),
+            'mvr_consent_at'      => now(),
+        ])->save();
+
         $drivers = collect($this->driverData())->map(function (array $attributes, int $index) use ($driverUser, $carrierUser) {
             return DriverProfile::updateOrCreate(
                 ['email' => $attributes['email']],
                 $attributes + [
-                    // Birinchisi — login qila oladigan haqiqiy driver akkaunti.
+                    // The first one is a real account that can sign in.
                     'user_id'            => $index === 0 ? $driverUser->id : null,
                     'created_by_user_id' => $index === 0 ? null : $carrierUser->id,
                     'source'             => $index === 0 ? 'self_signup' : 'manual',
@@ -117,7 +130,7 @@ class DriverHubSeeder extends Seeder
 
         $scoring = app(DriverScoringService::class);
 
-        // Birinchi vakansiyaga arizalar
+        // Applications on the first job
         foreach ($drivers->take(6) as $driver) {
             $result = $scoring->score($driver);
 
@@ -133,19 +146,24 @@ class DriverHubSeeder extends Seeder
         }
 
         $admin = User::updateOrCreate(
-            ['email' => 'admin@example.com'],
+            ['email' => 'admin@admin.com'],
             [
                 'name'              => 'Platform Admin',
-                'password'          => Hash::make('password'),
+                'password'          => Hash::make('Admin@1404'),
                 'role'              => User::ROLE_ADMIN,
                 'email_verified_at' => now(),
             ]
         );
 
-        $this->command->info('Demo akkauntlar:');
-        $this->command->info('  Admin:     admin@example.com / password');
-        $this->command->info('  Kompaniya: carrier@example.com / password');
-        $this->command->info('  Driver:    driver@example.com / password');
+        $admin->forceFill([
+            'privacy_accepted_at' => now(),
+            'privacy_version'     => config('privacy.version'),
+        ])->save();
+
+        $this->command->info('Demo accounts:');
+        $this->command->info('  Admin:    admin@admin.com / Admin@1404');
+        $this->command->info('  Carrier:  carrier@example.com / password');
+        $this->command->info('  Driver:   driver@example.com / password');
     }
 
     protected function driverData(): array
@@ -207,7 +225,7 @@ class DriverHubSeeder extends Seeder
                 'work_authorization' => 'green_card', 'available_from' => now()->addDays(30),
             ],
             [
-                // Knockout misoli: DUI + suspension + drug test.
+                // Knockout example: DUI + suspension + drug test.
                 'first_name' => 'Kevin', 'last_name' => 'Doyle',
                 'email' => 'k.doyle@example.com', 'phone' => '+15557770007',
                 'city' => 'St. Louis', 'state' => 'MO',

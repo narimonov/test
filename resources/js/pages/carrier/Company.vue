@@ -1,47 +1,47 @@
 <template>
     <div class="row justify-content-center">
         <div class="col-lg-8">
-            <h4 class="mb-3">Kompaniya profili</h4>
+            <h4 class="page-title mb-3">Company profile</h4>
 
             <AlertBox :message="error" :errors="errors" />
             <AlertBox :message="notice" variant="success" />
 
-            <div v-if="loading" class="empty-state">Yuklanmoqda…</div>
+            <div v-if="loading" class="empty-state">Loading…</div>
 
             <div v-else class="card">
                 <div class="card-body p-4">
                     <form @submit.prevent="save">
                         <div class="row g-3">
                             <div class="col-md-8">
-                                <label class="form-label">Kompaniya nomi</label>
+                                <label class="form-label">Company name</label>
                                 <input v-model="form.company_name" type="text" class="form-control" required>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Fleet hajmi</label>
+                                <label class="form-label">Fleet size</label>
                                 <input v-model.number="form.fleet_size" type="number" min="0" class="form-control">
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">MC raqam</label>
+                                <label class="form-label">MC number</label>
                                 <input v-model="form.mc_number" type="text" class="form-control">
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">DOT raqam</label>
+                                <label class="form-label">DOT number</label>
                                 <input v-model="form.dot_number" type="text" class="form-control">
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Kontakt shaxs</label>
+                                <label class="form-label">Contact person</label>
                                 <input v-model="form.contact_name" type="text" class="form-control">
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Kontakt telefon</label>
+                                <label class="form-label">Contact phone</label>
                                 <input v-model="form.contact_phone" type="tel" class="form-control">
                             </div>
                             <div class="col-md-5">
-                                <label class="form-label">Shahar</label>
+                                <label class="form-label">City</label>
                                 <input v-model="form.city" type="text" class="form-control">
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label">Shtat</label>
+                                <label class="form-label">State</label>
                                 <select v-model="form.state" class="form-select">
                                     <option :value="null">—</option>
                                     <option v-for="state in states" :key="state" :value="state">{{ state }}</option>
@@ -52,18 +52,18 @@
                                 <input v-model="form.zip" type="text" class="form-control">
                             </div>
                             <div class="col-12">
-                                <label class="form-label">Veb-sayt</label>
+                                <label class="form-label">Website</label>
                                 <input v-model="form.website" type="text" class="form-control">
                             </div>
                             <div class="col-12">
-                                <label class="form-label">Kompaniya haqida</label>
+                                <label class="form-label">About the company</label>
                                 <textarea v-model="form.about" rows="4" class="form-control"
-                                          placeholder="Driverlar ko'radigan qisqacha ma'lumot"></textarea>
+                                          placeholder="A short description drivers will see"></textarea>
                             </div>
                         </div>
 
                         <button class="btn btn-primary mt-4" :disabled="saving">
-                            {{ saving ? 'Saqlanmoqda…' : 'Saqlash' }}
+                            {{ saving ? 'Saving…' : 'Save' }}
                         </button>
                     </form>
                 </div>
@@ -128,7 +128,7 @@ export default {
                 const { data } = await api.put('/carrier/profile', payload);
                 this.form = { ...data.carrier };
                 await this.auth.refresh();
-                this.notice = 'Saqlandi.';
+                this.notice = 'Saved.';
             } catch (e) {
                 this.error = e.friendly;
                 this.errors = e.errors || {};

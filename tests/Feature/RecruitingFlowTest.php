@@ -72,17 +72,19 @@ class RecruitingFlowTest extends TestCase
     public function test_registration_creates_a_driver_profile_and_returns_a_token()
     {
         $response = $this->postJson('/api/auth/register', [
-            'name'                  => 'Yangi Driver',
-            'email'                 => 'yangi@test.com',
+            'name'                  => 'New Driver',
+            'email'                 => 'new@test.com',
             'password'              => 'password123',
             'password_confirmation' => 'password123',
             'role'                  => 'driver',
+            'privacy_accepted'      => true,
+            'privacy_version'       => config('privacy.version'),
         ]);
 
         $response->assertCreated()
             ->assertJsonStructure(['token', 'user' => ['id', 'role', 'is_verified']]);
 
-        $this->assertDatabaseHas('driver_profiles', ['email' => 'yangi@test.com']);
+        $this->assertDatabaseHas('driver_profiles', ['email' => 'new@test.com']);
     }
 
     public function test_registration_creates_a_carrier_record()
@@ -94,6 +96,8 @@ class RecruitingFlowTest extends TestCase
             'password_confirmation' => 'password123',
             'role'                  => 'carrier',
             'dot_number'            => '1234567',
+            'privacy_accepted'      => true,
+            'privacy_version'       => config('privacy.version'),
         ])->assertCreated();
 
         // Kompaniya nomi FMCSA'dan olinadi, foydalanuvchidan emas.
@@ -108,6 +112,8 @@ class RecruitingFlowTest extends TestCase
             'password'              => 'password123',
             'password_confirmation' => 'password123',
             'role'                  => 'carrier',
+            'privacy_accepted'      => true,
+            'privacy_version'       => config('privacy.version'),
         ])->assertStatus(422)->assertJsonValidationErrors(['dot_number', 'mc_number']);
     }
 

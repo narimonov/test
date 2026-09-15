@@ -12,9 +12,9 @@ use Illuminate\Validation\Rule;
 use RuntimeException;
 
 /**
- * Driver CDL va medical card'ni rasmga olib yuklaydi, maxfiy joylarni
- * belgilaydi. Tizim ularni qaytarib bo'lmaydigan qilib berkitadi, watermark
- * qo'yadi va PDF saqlaydi. Carrier faqat shu PDF'ni ko'radi.
+ * A driver photographs their CDL and medical card and marks the sensitive
+ * areas. Those areas are destroyed, a watermark is applied, and the result is
+ * saved as a PDF. Carriers only ever see that PDF.
  */
 class DriverDocumentController extends Controller
 {
@@ -36,7 +36,7 @@ class DriverDocumentController extends Controller
             'file'                => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:' . config('documents.max_upload_kb')],
             'document_expires_at' => ['nullable', 'date'],
 
-            // Berkitiladigan joylar — rasm o'lchamiga nisbatan 0..1 koordinatalar.
+            // Redaction boxes, as 0..1 coordinates relative to the image.
             'redactions'          => ['nullable', 'array', 'max:20'],
             'redactions.*.x'      => ['required', 'numeric', 'min:0', 'max:1'],
             'redactions.*.y'      => ['required', 'numeric', 'min:0', 'max:1'],
@@ -47,7 +47,7 @@ class DriverDocumentController extends Controller
         $profile = $this->profileFor($request);
         $disk = Storage::disk(config('documents.disk'));
 
-        // Asl rasm private diskda qoladi — hech qachon tarqatilmaydi.
+        // The original stays on the private disk and is never shared.
         $originalPath = $request->file('file')->store("documents/{$profile->id}/original", config('documents.disk'));
 
         $document = DriverDocument::create([
@@ -82,7 +82,7 @@ class DriverDocumentController extends Controller
             ])->save();
 
             return response()->json([
-                'message'  => 'Hujjatni qayta ishlab bo\'lmadi: ' . $e->getMessage(),
+                'message'  => 'Could not process the document: ' . $e->getMessage(),
                 'document' => $document->fresh(),
             ], 422);
         }
@@ -97,16 +97,16 @@ class DriverDocumentController extends Controller
         $this->deleteFiles($driverDocument);
         $driverDocument->delete();
 
-        return response()->json(['message' => 'Hujjat o\'chirildi.']);
+        return response()->json(['message' => 'Document deleted.']);
     }
 
     /**
-     * Berkitilgan PDF'ni ko'rsatadi. Driver o'zinikini, carrier esa faqat
-     * o'ziga ariza bergan driverning hujjatini ko'ra oladi.
+     * Serves the redacted PDF. A driver sees their own; a carrier sees only
+     * the documents of drivers who applied to them.
      */
     public function download(Request $request, DriverDocument $driverDocument)
     {
-        abort_unless($this->canView($request, $driverDocument), 403, 'Bu hujjatni ko\'rishga ruxsat yo\'q.');
+        abort_unless($this->canView($request, $driverDocument), 403, 'You cannot view this document.');
         abort_unless($driverDocument->status === 'ready' && $driverDocument->pdf_path, 404);
 
         $disk = Storage::disk(config('documents.disk'));
@@ -134,7 +134,7 @@ class DriverDocumentController extends Controller
         }
 
         if ($user->isCarrier() && $user->carrier) {
-            // Kompaniya faqat o'ziga ariza bergan driverning hujjatini ko'radi.
+            // A carrier only sees documents of drivers who applied to them.
             return $document->driverProfile
                 ->applications()
                 ->whereHas('jobPost', fn ($query) => $query->where('carrier_id', $user->carrier->id))
@@ -159,7 +159,7 @@ class DriverDocumentController extends Controller
     {
         $profile = DriverProfile::where('user_id', $request->user()->id)->first();
 
-        abort_unless($profile, 404, 'Avval driver profilingizni yarating.');
+        abort_unless($profile, 404, 'Create your driver profile first.');
 
         return $profile;
     }

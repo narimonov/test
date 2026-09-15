@@ -6,16 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Models\Carrier;
 use App\Models\DriverProfile;
 use App\Services\DriverScoringService;
+use App\Services\PlanGate;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * Recruiter/carrier tomoni: butun driver bazasini kriteriyalar bo'yicha
- * filtrlab, ball bo'yicha saralab ko'radi. Qo'lda driver ham kirita oladi.
+ * The carrier side: filter the whole driver pool on criteria, ranked by
+ * score. Recruiters can also enter drivers by hand.
  */
 class TalentPoolController extends Controller
 {
-    public function index(Request $request, DriverScoringService $scoring)
+    public function index(Request $request, DriverScoringService $scoring, PlanGate $plans)
     {
         $filters = $request->validate([
             'q'               => ['nullable', 'string', 'max:100'],
@@ -43,7 +44,7 @@ class TalentPoolController extends Controller
 
         $drivers = DriverProfile::query()
             ->where('is_searchable', true)
-            // Boshqa kompaniya yollagan va blacklist'dagi driverlar default'da chiqmaydi.
+            // Drivers hired elsewhere, and blacklisted ones, are hidden by default.
             ->when(empty($filters['include_hired']), fn ($query) => $query->whereNull('hired_carrier_id'))
             ->when(empty($filters['include_blacklisted']), fn ($query) => $query->whereNull('blacklisted_at'))
             ->filter($filters)
@@ -71,6 +72,14 @@ class TalentPoolController extends Controller
 
         $ranked = $this->sortRows($ranked, $filters['sort'] ?? 'score');
 
+        // Starter sees only the strongest slice of the pool.
+        $cap = $plans->talentPoolLimit($this->carrierFor($request));
+        $capped = $cap !== null && $ranked->count() > $cap;
+
+        if ($capped) {
+            $ranked = $ranked->take($cap);
+        }
+
         $perPage = $filters['per_page'] ?? 20;
         $page = max(1, (int) $request->query('page', 1));
 
@@ -83,6 +92,8 @@ class TalentPoolController extends Controller
                 'last_page'    => max(1, (int) ceil($ranked->count() / $perPage)),
                 'qualified'    => $ranked->where('disqualified', false)->count(),
                 'by_tier'      => $ranked->groupBy('tier')->map->count(),
+                'capped_by_plan' => $capped,
+                'plan_limit'   => $cap,
             ],
         ]);
     }
@@ -99,9 +110,16 @@ class TalentPoolController extends Controller
         ]);
     }
 
-    /** Recruiter qo'lda driver kiritadi (telefon orqali gaplashib olgan ma'lumot). */
-    public function store(Request $request, DriverScoringService $scoring)
+    /** A recruiter enters a driver by hand, e.g. after a phone screen. */
+    public function store(Request $request, DriverScoringService $scoring, PlanGate $plans)
     {
+        if (! $plans->allows($this->carrierFor($request), 'manual_driver_entry')) {
+            return response()->json([
+                'message' => 'Adding drivers manually is part of the Growth plan.',
+                'code'    => 'upgrade_required',
+            ], 402);
+        }
+
         $data = $request->validate(DriverProfileController::rulesWithCdlCheck($request, true));
 
         $driver = DriverProfile::create($data + [
@@ -117,8 +135,8 @@ class TalentPoolController extends Controller
 
     public function update(Request $request, DriverProfile $driverProfile, DriverScoringService $scoring)
     {
-        // Faqat qo'lda kiritilgan driverni tahrirlash mumkin — driver o'z profilini o'zi boshqaradi.
-        abort_if($driverProfile->user_id !== null, 403, 'Bu driver o\'z profilini o\'zi boshqaradi.');
+        // Only manually entered drivers are editable; others own their profile.
+        abort_if($driverProfile->user_id !== null, 403, 'This driver manages their own profile.');
 
         $driverProfile->fill(
             $request->validate(DriverProfileController::rulesWithCdlCheck($request, false, $driverProfile))

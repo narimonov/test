@@ -10,8 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Blacklist'ga tushgan driver yoki kompaniya apelyatsiya beradi.
- * Qarorni admin chiqaradi.
+ * A blacklisted driver or carrier appeals; an admin decides.
  */
 class BlacklistAppealController extends Controller
 {
@@ -39,13 +38,13 @@ class BlacklistAppealController extends Controller
 
         if (! $subject['model']->is_blacklisted) {
             throw ValidationException::withMessages([
-                'reason' => ['Siz blacklist\'da emassiz.'],
+                'reason' => ['You are not blacklisted.'],
             ]);
         }
 
         if ($reputation->hasPendingAppeal($subject['model'])) {
             throw ValidationException::withMessages([
-                'reason' => ['Apelyatsiyangiz ko\'rib chiqilmoqda.'],
+                'reason' => ['Your appeal is already being reviewed.'],
             ]);
         }
 
@@ -58,7 +57,7 @@ class BlacklistAppealController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Apelyatsiya yuborildi. Admin ko\'rib chiqadi.',
+            'message' => 'Appeal submitted. An admin will review it.',
             'appeal'  => $appeal,
         ], 201);
     }
@@ -75,6 +74,6 @@ class BlacklistAppealController extends Controller
             return ['type' => Review::SUBJECT_DRIVER, 'model' => $user->driverProfile];
         }
 
-        abort(404, 'Profil topilmadi.');
+        abort(404, 'No profile found.');
     }
 }

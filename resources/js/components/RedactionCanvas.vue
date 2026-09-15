@@ -1,9 +1,9 @@
 <template>
     <div>
         <p class="text-muted small mb-2">
-            Berkitmoqchi bo'lgan joyingizni sichqoncha (yoki barmoq) bilan belgilab chiqing —
-            masalan litsenziya raqami, tug'ilgan sana, manzil. Belgilangan joy
-            <strong>butunlay o'chiriladi</strong>, tiklab bo'lmaydi.
+            Drag over anything you do not want carriers to see — the licence number, date of
+            birth, home address. Whatever you cover is <strong>destroyed, not blurred</strong>,
+            so it cannot be recovered.
         </p>
 
         <div
@@ -17,7 +17,7 @@
             @touchmove.prevent="move"
             @touchend.prevent="finish"
         >
-            <img ref="image" :src="src" alt="Hujjat" draggable="false" @load="$emit('loaded')">
+            <img ref="image" :src="src" alt="Document" draggable="false" @load="$emit('loaded')">
 
             <div
                 v-for="(box, index) in boxes"
@@ -25,7 +25,7 @@
                 class="redaction-box"
                 :style="styleFor(box)"
             >
-                <button type="button" class="redaction-remove" title="Olib tashlash"
+                <button type="button" class="redaction-remove" title="Remove"
                         @mousedown.stop @touchstart.stop.prevent @click.stop="remove(index)">&times;</button>
             </div>
 
@@ -33,9 +33,9 @@
         </div>
 
         <div class="d-flex justify-content-between align-items-center mt-2">
-            <span class="text-muted small">{{ boxes.length }} ta joy belgilandi</span>
+            <span class="text-muted small">{{ boxes.length }} area(s) marked</span>
             <button v-if="boxes.length" type="button" class="btn btn-sm btn-link" @click="clear">
-                Hammasini tozalash
+                Clear all
             </button>
         </div>
     </div>

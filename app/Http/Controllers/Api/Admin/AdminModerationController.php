@@ -13,7 +13,7 @@ use Illuminate\Validation\Rule;
 
 class AdminModerationController extends Controller
 {
-    /** Ko'rib chiqilishi kerak bo'lgan apelyatsiyalar. */
+    /** Appeals waiting to be worked. */
     public function appeals(Request $request)
     {
         $status = $request->query('status', 'pending');
@@ -31,7 +31,7 @@ class AdminModerationController extends Controller
         return response()->json($appeals);
     }
 
-    /** Apelyatsiya bo'yicha qaror. */
+    /** Decide an appeal. */
     public function decideAppeal(Request $request, BlacklistAppeal $appeal, ReputationService $reputation)
     {
         $data = $request->validate([
@@ -48,7 +48,7 @@ class AdminModerationController extends Controller
             : $appeal->carrier;
 
         if ($data['decision'] === 'approved' && $subject) {
-            $reputation->liftBlacklist($subject, $data['note'] ?? 'Apelyatsiya qabul qilindi');
+            $reputation->liftBlacklist($subject, $data['note'] ?? 'Appeal approved');
         }
 
         $appeal->forceFill([
@@ -60,13 +60,13 @@ class AdminModerationController extends Controller
 
         return response()->json([
             'message' => $data['decision'] === 'approved'
-                ? 'Apelyatsiya qabul qilindi, blacklist olib tashlandi.'
-                : 'Apelyatsiya rad etildi.',
+                ? 'Appeal approved and the blacklist lifted.'
+                : 'Appeal rejected.',
             'appeal'  => $appeal->fresh(),
         ]);
     }
 
-    /** Admin qo'lda blacklist qo'yishi/olib tashlashi. */
+    /** Manual blacklist add or remove. */
     public function setBlacklist(Request $request, ReputationService $reputation)
     {
         $data = $request->validate([
@@ -85,24 +85,24 @@ class AdminModerationController extends Controller
             : $reputation->liftBlacklist($subject, $data['reason'] ?? 'Admin qarori');
 
         return response()->json([
-            'message' => $data['action'] === 'add' ? 'Blacklist\'ga qo\'shildi.' : 'Blacklist\'dan olindi.',
+            'message' => $data['action'] === 'add' ? 'Added to the blacklist.' : 'Removed from the blacklist.',
             'subject' => $subject,
         ]);
     }
 
-    /** Nomaqbul review'ni olib tashlash. */
+    /** Take down an unacceptable review. */
     public function removeReview(Request $request, Review $review)
     {
         $review->update(['status' => 'removed', 'is_negative' => false]);
 
-        return response()->json(['message' => 'Review olib tashlandi.', 'review' => $review->fresh()]);
+        return response()->json(['message' => 'Review removed.', 'review' => $review->fresh()]);
     }
 
-    /** Kompaniyani FMCSA bo'yicha qayta tekshirish. */
+    /** Re-check a carrier against FMCSA. */
     public function recheckCarrier(Carrier $carrier, \App\Services\CarrierVerificationService $service)
     {
         return response()->json([
-            'message' => 'FMCSA holati yangilandi.',
+            'message' => 'FMCSA status refreshed.',
             'carrier' => $service->recheck($carrier),
         ]);
     }

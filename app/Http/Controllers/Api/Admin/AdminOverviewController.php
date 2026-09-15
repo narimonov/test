@@ -13,7 +13,7 @@ use App\Models\User;
 
 class AdminOverviewController extends Controller
 {
-    /** Butun platforma bo'yicha umumiy ko'rsatkichlar. */
+    /** Platform-wide counters. */
     public function __invoke()
     {
         return response()->json([

@@ -10,6 +10,12 @@ ball qo'yilgan holda ko'radi.
 - **Saralash:** `config/driver_scoring.php` — kriteriyalar kodda emas, konfiguratsiyada
 - **Kompaniya tekshiruvi:** FMCSA (MC/DOT) + rasmiy kontaktga yuboriladigan kod
 - **Hujjatlar:** CDL / medical card rasmi berkitilib, watermark bilan PDF qilinadi
+- **To'lov:** Stripe / Payme / Click, uchta tarif ($50 / $100 / $500)
+- **Chat:** carrier ↔ driver, PDF va rasm biriktirish bilan
+- **Support:** har sahifada, avval AI javob beradi, keyin Telegram orqali agent
+- **PWA:** telefon/desktopga o'rnatiladi (keyinchalik iOS va Play uchun asos)
+
+> Interfeys va kod izohlari **ingliz tilida** — platforma US bozori uchun.
 
 ---
 
@@ -36,11 +42,96 @@ Demo akkauntlar:
 
 | Rol | Email | Parol |
 |---|---|---|
-| Admin | `admin@example.com` | `password` |
+| Admin | `admin@admin.com` | `Admin@1404` |
 | Kompaniya | `carrier@example.com` | `password` |
 | Driver | `driver@example.com` | `password` |
 
 Testlar: `./vendor/bin/phpunit`
+
+---
+
+## Tariflar
+
+| | Starter $50 | Growth $100 | Pro $500 |
+|---|---|---|---|
+| Ochiq vakansiya | 3 ta | cheksiz | cheksiz |
+| Arizachilar ball bilan | ✓ | ✓ | ✓ |
+| Driver bazasi | top 25 natija | to'liq | to'liq |
+| Kriteriya vaznlarini sozlash | — | ✓ | ✓ |
+| Qo'lda driver kiritish | — | ✓ | ✓ |
+| Chat | faqat ariza berganlar bilan | har qanday driver bilan | har qanday driver bilan |
+| **Personal recruiting** | — | — | ✓ |
+| Prioritet support | — | — | ✓ |
+
+Pro va Growth orasidagi farq katta, chunki Pro — bu odamning vaqti:
+recruiter sizning talabingiz bo'yicha driver topadi, screening qiladi va
+onboarding'dan o'tkazishga yordam beradi.
+
+To'lov: **Stripe** (karta, USD), **Payme** va **Click** (UZS). Har biri bitta
+`PaymentGateway` interfeysi ortida, `config/payments.php` da sozlanadi.
+`PAYMENTS_DRIVER=fake` — lokal ishlab chiqish uchun, tashqi so'rovsiz.
+
+---
+
+## Privacy va rozilik
+
+`/privacy` sahifasida to'liq notice bor va har bir maydon uchun **qaysi US
+qonuni** talab qilishi yozilgan:
+
+- **TCPA** — SMS yuborishdan oldin aniq rozilik; A2P 10DLC registratsiyasi
+  (2025-yil fevraldan ro'yxatdan o'tmagan trafik bloklanadi)
+- **DPPA (18 U.S.C. § 2721)** — CDL raqami shaxsiy ma'lumot, faqat ruxsat
+  etilgan maqsadlarda; CDL egasini ish beruvchi uchun tekshirish — shulardan biri
+- **FCRA + DPPA** — MVR olishdan oldin alohida yozma disclosure va yozma ruxsat
+- **CCPA/CPRA** va shtat qonunlari — ma'lumot nusxasi, o'chirish, opt-out
+- **49 CFR Part 391** — driver qualification file'ni saqlash muddati
+
+Ro'yxatdan o'tishda privacy roziligi **majburiy**, SMS roziligi esa **alohida**
+(TCPA shuni talab qiladi). Har bir rozilik sanasi, versiyasi va IP bilan
+saqlanadi — isbotlab bo'lmaydigan rozilik rozilik emas.
+
+---
+
+## Chat va support
+
+**Carrier ↔ driver chat**: driver kartochkasidan "Message" bosiladi. PDF va
+rasm biriktirish mumkin; fayllar private diskda, faqat suhbat ishtirokchilari
+ocha oladi. Qo'lda kiritilgan (akkаunti yo'q) driverga chat ochilmaydi —
+tizim telefon raqamini ko'rsatadi.
+
+**Support** tugmasi har sahifada, o'ng pastda:
+
+1. AI javob beradi (`SUPPORT_AI_DRIVER=rules` — tashqi so'rovsiz,
+   `claude` — Anthropic API, xatolikda `rules` ga tushadi)
+2. Hal qilolmasa yoki foydalanuvchi so'rasa — **Telegram**dagi agentlarga
+   o'tadi
+3. Agent Telegram'da o'sha xabarga reply qiladi, javob saytdagi chatda
+   chiqadi (`POST /api/telegram/webhook`, secret header bilan tekshiriladi)
+
+---
+
+## Review'lar: proof majburiy
+
+Review yozilgan zahoti e'lon qilinmaydi:
+
+1. Muallif **proof** biriktiradi (rate confirmation, settlement, pay stub,
+   employment letter)
+2. Admin proofni tekshiradi va **qarshi tomon bilan bog'lanadi**
+3. Faqat shundan keyin review e'lon qilinadi va blacklist hisobiga kiradi
+
+Proofsiz yoki qarshi tomon bilan bog'lanmasdan e'lon qilib bo'lmaydi —
+server ikkalasini ham tekshiradi.
+
+---
+
+## PWA
+
+`public/manifest.webmanifest` + `public/service-worker.js`. Telefon yoki
+desktopga o'rnatiladi, offline'da shell ochiladi. API so'rovlari **hech qachon**
+keshlanmaydi — eski arizachilar ro'yxati yoki eski obuna holatini ko'rsatish
+hech narsa ko'rsatmaslikdan yomonroq.
+
+iOS va Google Play uchun keyinroq shu PWA'ni o'rash kifoya qiladi.
 
 ---
 
@@ -234,7 +325,11 @@ Quyidagilar strukturasi tayyor, faqat tashqi xizmat ulanishi kerak:
   aktivlashtiriladi.
 - **MVR** — provayder tanlanishi kerak (SambaSafety'da sandbox bor). Oxirgi
   30 kun ichidagi MVR qayta ishlatilishi, state bo'yicha narxlar va yangi MVR
-  buyurtma qilish shu integratsiyaga bog'liq.
+  buyurtma qilish shu integratsiyaga bog'liq. Rozilik allaqachon yig'ilyapti
+  (`users.mvr_consent_at`).
+- **To'lov provayderlari** — Stripe/Payme/Click kodi yozilgan, kalitlar kerak.
+- **Telegram bot** — `TELEGRAM_BOT_TOKEN` va webhook secret kerak; ularsiz
+  eskalatsiya admin navbatida qoladi.
 - **Aviabilet** — Expedia Rapid API faqat mehmonxona beradi, reys bermaydi.
   Duffel yoki Amadeus Self-Service kerak bo'ladi.
 - **Kompaniya reputatsiyasi** — MC/DOT bo'yicha internetdagi sharhlarni yig'ish

@@ -14,6 +14,8 @@ export const useAuthStore = defineStore('auth', {
         isCarrier: (state) => state.user?.role === 'carrier',
         isAdmin: (state) => state.user?.role === 'admin',
         isFmcsaVerified: (state) => !!state.user?.fmcsa_verified,
+        isBlacklisted: (state) => !!state.user?.is_blacklisted,
+        hasPrivacyConsent: (state) => !!state.user?.has_current_privacy_consent,
         isVerified: (state) => !!state.user?.is_verified,
         hasSubscription: (state) => !!state.user?.carrier?.has_active_subscription,
         homeRoute() {

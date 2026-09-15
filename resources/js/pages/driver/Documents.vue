@@ -1,11 +1,10 @@
 <template>
     <div>
-        <h4 class="mb-1">Hujjatlarim</h4>
+        <h4 class="page-title mb-1">My documents</h4>
         <p class="text-muted small mb-4">
-            CDL va medical card'ni rasmga olib yuklang. Maxfiy joylarni belgilasangiz,
-            tizim ularni butunlay berkitadi, ustiga
-            <code>{{ watermarkText }}</code> watermark qo'yadi va PDF qilib saqlaydi.
-            Kompaniyalar faqat shu PDF'ni ko'radi.
+            Photograph your CDL and medical card. Mark the parts you want hidden and they are
+            destroyed, not blurred, then stamped with a <code>{{ watermarkText }}</code> watermark
+            and saved as a PDF. Carriers only ever see that PDF.
         </p>
 
         <AlertBox :message="error" :errors="errors" />
@@ -15,11 +14,11 @@
             <div class="col-lg-7">
                 <div class="card">
                     <div class="card-body p-4">
-                        <h6 class="mb-3">Yangi hujjat</h6>
+                        <h6 class="mb-3">New document</h6>
 
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
-                                <label class="form-label">Hujjat turi</label>
+                                <label class="form-label">Document type</label>
                                 <select v-model="form.type" class="form-select">
                                     <option v-for="(label, value) in types" :key="value" :value="value">
                                         {{ label }}
@@ -27,25 +26,25 @@
                                 </select>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Amal qilish muddati</label>
+                                <label class="form-label">Expiry date</label>
                                 <input v-model="form.document_expires_at" type="date" class="form-control">
                             </div>
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label">Hujjat rasmi</label>
+                            <label class="form-label">Photo</label>
                             <input ref="file" type="file" class="form-control"
                                    accept="image/jpeg,image/png,image/webp" capture="environment"
                                    @change="pick">
-                            <div class="form-text">Telefon kamerasi bilan olsangiz ham bo'ladi. JPG, PNG yoki WEBP.</div>
+                            <div class="form-text">Your phone camera is fine. JPG, PNG or WEBP.</div>
                         </div>
 
                         <RedactionCanvas v-if="preview" v-model="form.redactions" :src="preview" class="mb-3" />
 
                         <button class="btn btn-primary" :disabled="!preview || uploading" @click="upload">
-                            {{ uploading ? 'Yuklanmoqda…' : 'Yuklash va berkitish' }}
+                            {{ uploading ? 'Uploading…' : 'Upload and redact' }}
                         </button>
-                        <button v-if="preview" class="btn btn-link" @click="reset">Bekor qilish</button>
+                        <button v-if="preview" class="btn btn-link" @click="reset">Cancel</button>
                     </div>
                 </div>
             </div>
@@ -53,12 +52,12 @@
             <div class="col-lg-5">
                 <div class="card">
                     <div class="card-body">
-                        <h6 class="mb-3">Yuklangan hujjatlar</h6>
+                        <h6 class="mb-3">Uploaded</h6>
 
-                        <div v-if="loading" class="text-muted small">Yuklanmoqda…</div>
+                        <div v-if="loading" class="text-muted small">Loading…</div>
 
                         <div v-else-if="!documents.length" class="text-muted small">
-                            Hali hujjat yuklamagansiz.
+                            Nothing uploaded yet.
                         </div>
 
                         <div v-for="document in documents" :key="document.id"
@@ -66,10 +65,10 @@
                             <div>
                                 <div class="fw-semibold">{{ document.type_label }}</div>
                                 <div class="text-muted small">
-                                    {{ document.redactions ? document.redactions.length : 0 }} joy berkitilgan
+                                    {{ document.redactions ? document.redactions.length : 0 }} area(s) redacted
                                     <template v-if="document.document_expires_at">
-                                        · muddati {{ document.document_expires_at }}
-                                        <span v-if="document.is_expired" class="badge bg-danger ms-1">tugagan</span>
+                                        · expires {{ document.document_expires_at }}
+                                        <span v-if="document.is_expired" class="badge bg-danger ms-1">expired</span>
                                     </template>
                                 </div>
                                 <div v-if="document.status !== 'ready'" class="small text-danger">
@@ -81,7 +80,7 @@
                                         :disabled="opening === document.id" @click="openPdf(document)">
                                     {{ opening === document.id ? '…' : 'PDF' }}
                                 </button>
-                                <button class="btn btn-sm btn-outline-danger" @click="remove(document)">O'chirish</button>
+                                <button class="btn btn-sm btn-outline-danger" @click="remove(document)">Delete</button>
                             </div>
                         </div>
                     </div>
@@ -200,7 +199,7 @@ export default {
 
             try {
                 await api.post('/driver/documents', payload);
-                this.notice = 'Hujjat berkitilgan holda saqlandi.';
+                this.notice = 'Saved with the marked areas redacted.';
                 this.reset();
                 await this.load();
             } catch (e) {
@@ -212,7 +211,7 @@ export default {
         },
 
         async remove(document) {
-            if (!window.confirm(`${document.type_label} o'chirilsinmi?`)) return;
+            if (!window.confirm(`Delete this ${document.type_label}?`)) return;
 
             try {
                 await api.delete(`/driver/documents/${document.id}`);
@@ -223,9 +222,9 @@ export default {
         },
 
         /**
-         * PDF himoyalangan yo'lda. Tokenni URL'ga qo'ymaymiz (brauzer tarixi va
-         * server log'lariga tushib qolardi) — axios bilan blob qilib olib,
-         * vaqtinchalik havola orqali ochamiz.
+         * The PDF sits behind a permission check. We do not put the token in the
+         * URL — it would end up in browser history and server logs — so we fetch
+         * it as a blob and open that instead.
          */
         async openPdf(document) {
             this.opening = document.id;
@@ -237,7 +236,7 @@ export default {
 
                 window.open(url, '_blank', 'noopener');
 
-                // Brauzer hujjatni o'qib olishi uchun biroz kutamiz.
+                // Give the browser time to read it before revoking.
                 setTimeout(() => URL.revokeObjectURL(url), 60000);
             } catch (e) {
                 this.error = e.friendly;

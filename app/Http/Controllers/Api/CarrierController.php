@@ -82,7 +82,7 @@ class CarrierController extends Controller
 
         if (! $user->is_verified) {
             return response()->json([
-                'message' => 'Obuna ochishdan oldin telefon yoki emailni tasdiqlang.',
+                'message' => 'Verify your phone or email before subscribing.',
                 'code'    => 'verification_required',
             ], 403);
         }
@@ -96,7 +96,7 @@ class CarrierController extends Controller
         ])->save();
 
         return response()->json([
-            'message' => 'Obuna aktivlashtirildi.',
+            'message' => 'Subscription activated.',
             'carrier' => $carrier->fresh(),
         ]);
     }
@@ -108,7 +108,7 @@ class CarrierController extends Controller
         $carrier->forceFill(['subscription_status' => 'cancelled'])->save();
 
         return response()->json([
-            'message' => 'Obuna bekor qilindi.',
+            'message' => 'Subscription cancelled.',
             'carrier' => $carrier->fresh(),
         ]);
     }

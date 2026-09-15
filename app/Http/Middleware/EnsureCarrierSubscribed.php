@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 class EnsureCarrierSubscribed
 {
     /**
-     * Carrier tomoni pullik — obuna aktiv bo'lmasa driver bazasi yopiq.
+     * The carrier side is paid: without an active plan the driver pool is closed.
      */
     public function handle(Request $request, Closure $next)
     {
@@ -16,7 +16,7 @@ class EnsureCarrierSubscribed
 
         if (! $carrier || ! $carrier->has_active_subscription) {
             return response()->json([
-                'message' => 'Driver bazasidan foydalanish uchun aktiv obuna kerak.',
+                'message' => 'An active subscription is required to use the driver pool.',
                 'code'    => 'subscription_required',
             ], 402);
         }

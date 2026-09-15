@@ -6,7 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 
 /**
- * Admin tomonidan bloklangan foydalanuvchi hech qanday amal bajara olmaydi.
+ * A user blocked by an admin cannot do anything.
  */
 class EnsureNotBlocked
 {
@@ -16,7 +16,7 @@ class EnsureNotBlocked
 
         if ($user && $user->is_blocked) {
             return response()->json([
-                'message' => 'Akkauntingiz bloklangan.' . ($user->blocked_reason ? ' Sabab: ' . $user->blocked_reason : ''),
+                'message' => 'Your account is blocked.' . ($user->blocked_reason ? ' Reason: ' . $user->blocked_reason : ''),
                 'code'    => 'account_blocked',
             ], 403);
         }

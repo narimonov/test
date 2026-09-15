@@ -1,19 +1,19 @@
 <template>
     <div>
         <div v-if="knockouts.length" class="mb-3">
-            <div class="fw-semibold text-danger mb-1">Knockout — rad etish sabablari</div>
+            <div class="fw-semibold text-danger mb-1">Knockout — why this is a no</div>
             <span v-for="reason in knockouts" :key="reason" class="knockout-tag">{{ reason }}</span>
         </div>
 
-        <div v-if="!rows.length" class="text-muted small">Ball hisoblanmagan.</div>
+        <div v-if="!rows.length" class="text-muted small">No score was calculated.</div>
 
         <table v-else class="table table-sm align-middle mb-0">
             <thead>
                 <tr class="text-muted small">
-                    <th>Kriteriya</th>
-                    <th style="width: 120px">Qiymat</th>
-                    <th style="width: 150px">Ball</th>
-                    <th style="width: 70px" class="text-end">Vazn</th>
+                    <th>Criterion</th>
+                    <th style="width: 120px">Value</th>
+                    <th style="width: 150px">Points</th>
+                    <th style="width: 70px" class="text-end">Weight</th>
                 </tr>
             </thead>
             <tbody>
@@ -48,7 +48,7 @@ export default {
         displayValue(value) {
             if (value === null || value === undefined || value === '') return '—';
             if (Array.isArray(value)) return value.length ? value.join(', ') : '—';
-            if (typeof value === 'boolean') return value ? 'Ha' : 'Yo\'q';
+            if (typeof value === 'boolean') return value ? 'Yes' : 'No';
 
             return value;
         },

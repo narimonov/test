@@ -10,13 +10,54 @@ use App\Models\JobPost;
 use App\Models\Review;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class ReputationAndHiringTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Storage::fake('local');
+        config(['documents.disk' => 'local']);
+    }
+
+    /**
+     * Submit a review with the proof the platform now requires.
+     */
+    protected function leaveReview(Application $application, int $rating, array $extra = [])
+    {
+        return $this->post('/api/reviews', array_merge([
+            'application_id' => $application->id,
+            'rating'         => $rating,
+            'proofs'         => [UploadedFile::fake()->create('rate-con.pdf', 40, 'application/pdf')],
+            'proof_kinds'    => ['rate_confirmation'],
+        ], $extra), ['Accept' => 'application/json']);
+    }
+
+    /**
+     * Push a submitted review all the way through moderation, which is the
+     * only path that makes it count towards a blacklist.
+     */
+    protected function publishReview(Review $review): void
+    {
+        $admin = $this->admin();
+        $current = auth('sanctum')->user();
+
+        Sanctum::actingAs($admin);
+        $this->postJson("/api/admin/reviews/{$review->id}/contacted")->assertOk();
+        $this->postJson("/api/admin/reviews/{$review->id}/decision", ['decision' => 'publish'])->assertOk();
+
+        if ($current) {
+            Sanctum::actingAs($current);
+        }
+    }
 
     protected function carrier(string $email = 'boss@test.com'): User
     {
@@ -156,9 +197,52 @@ class ReputationAndHiringTest extends TestCase
 
         Sanctum::actingAs($carrierUser);
 
-        $this->postJson('/api/reviews', ['application_id' => $application->id, 'rating' => 1])
+        $this->leaveReview($application, 1)
             ->assertStatus(422)
             ->assertJsonValidationErrors('application_id');
+    }
+
+    public function test_a_review_without_proof_is_rejected()
+    {
+        $carrierUser = $this->carrier();
+        $application = $this->application($carrierUser, $this->driver()->driverProfile, 'hired');
+
+        Sanctum::actingAs($carrierUser);
+
+        $this->postJson('/api/reviews', ['application_id' => $application->id, 'rating' => 5])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('proofs');
+    }
+
+    public function test_a_submitted_review_is_not_published_and_does_not_count_yet()
+    {
+        $carrierUser = $this->carrier();
+        $driver = $this->driver()->driverProfile;
+
+        Sanctum::actingAs($carrierUser);
+
+        for ($i = 0; $i < 3; $i++) {
+            $this->leaveReview($this->application($carrierUser, $driver, 'rejected'), 1)->assertCreated();
+        }
+
+        $this->assertSame(3, Review::where('status', Review::STATUS_PENDING_REVIEW)->count());
+        $this->assertSame(0, Review::published()->count());
+        $this->assertFalse($driver->fresh()->is_blacklisted);
+    }
+
+    public function test_a_review_cannot_be_published_before_the_other_party_is_contacted()
+    {
+        $carrierUser = $this->carrier();
+        $application = $this->application($carrierUser, $this->driver()->driverProfile, 'hired');
+
+        Sanctum::actingAs($carrierUser);
+        $this->leaveReview($application, 4)->assertCreated();
+
+        Sanctum::actingAs($this->admin());
+
+        $this->postJson('/api/admin/reviews/' . Review::first()->id . '/decision', ['decision' => 'publish'])
+            ->assertStatus(422)
+            ->assertJson(['code' => 'contact_required']);
     }
 
     public function test_a_carrier_cannot_review_an_application_that_is_not_theirs()
@@ -169,8 +253,7 @@ class ReputationAndHiringTest extends TestCase
 
         Sanctum::actingAs($stranger);
 
-        $this->postJson('/api/reviews', ['application_id' => $application->id, 'rating' => 5])
-            ->assertStatus(403);
+        $this->leaveReview($application, 5)->assertStatus(403);
     }
 
     public function test_the_same_relationship_cannot_be_reviewed_twice()
@@ -180,8 +263,8 @@ class ReputationAndHiringTest extends TestCase
 
         Sanctum::actingAs($carrierUser);
 
-        $this->postJson('/api/reviews', ['application_id' => $application->id, 'rating' => 4])->assertCreated();
-        $this->postJson('/api/reviews', ['application_id' => $application->id, 'rating' => 2])
+        $this->leaveReview($application, 4)->assertCreated();
+        $this->leaveReview($application, 2)
             ->assertStatus(422)
             ->assertJsonValidationErrors('application_id');
     }
@@ -194,17 +277,21 @@ class ReputationAndHiringTest extends TestCase
         Sanctum::actingAs($carrierUser);
 
         for ($i = 0; $i < 2; $i++) {
-            $application = $this->application($carrierUser, $driver, 'rejected');
-            $this->postJson('/api/reviews', ['application_id' => $application->id, 'rating' => 1])
-                ->assertCreated()
-                ->assertJsonPath('blacklisted', false);
+            $id = $this->leaveReview($this->application($carrierUser, $driver, 'rejected'), 1)
+                ->assertCreated()->json('review.id');
+
+            $this->publishReview(Review::find($id));
         }
 
         $this->assertFalse($driver->fresh()->is_blacklisted);
 
-        $third = $this->application($carrierUser, $driver, 'rejected');
-        $this->postJson('/api/reviews', ['application_id' => $third->id, 'rating' => 2])
-            ->assertCreated()
+        $third = $this->leaveReview($this->application($carrierUser, $driver, 'rejected'), 2)
+            ->assertCreated()->json('review.id');
+
+        Sanctum::actingAs($this->admin());
+        $this->postJson('/api/admin/reviews/' . $third . '/contacted')->assertOk();
+        $this->postJson('/api/admin/reviews/' . $third . '/decision', ['decision' => 'publish'])
+            ->assertOk()
             ->assertJsonPath('blacklisted', true);
 
         $this->assertTrue($driver->fresh()->is_blacklisted);
@@ -218,8 +305,10 @@ class ReputationAndHiringTest extends TestCase
         Sanctum::actingAs($carrierUser);
 
         for ($i = 0; $i < 4; $i++) {
-            $application = $this->application($carrierUser, $driver, 'hired');
-            $this->postJson('/api/reviews', ['application_id' => $application->id, 'rating' => 3])->assertCreated();
+            $id = $this->leaveReview($this->application($carrierUser, $driver, 'hired'), 3)
+                ->assertCreated()->json('review.id');
+
+            $this->publishReview(Review::find($id));
         }
 
         $this->assertFalse($driver->fresh()->is_blacklisted);
@@ -233,8 +322,11 @@ class ReputationAndHiringTest extends TestCase
         Sanctum::actingAs($driverUser);
 
         for ($i = 0; $i < 3; $i++) {
-            $application = $this->application($carrierUser, $driverUser->driverProfile, 'rejected');
-            $this->postJson('/api/reviews', ['application_id' => $application->id, 'rating' => 1])->assertCreated();
+            $id = $this->leaveReview($this->application($carrierUser, $driverUser->driverProfile, 'rejected'), 1)
+                ->assertCreated()->json('review.id');
+
+            $this->publishReview(Review::find($id));
+            Sanctum::actingAs($driverUser);
         }
 
         $this->assertTrue($carrierUser->carrier->fresh()->is_blacklisted);
@@ -301,11 +393,14 @@ class ReputationAndHiringTest extends TestCase
         $driverUser = $this->driver();
         $driver = $driverUser->driverProfile;
 
-        // 3 ta salbiy baho -> blacklist
+        // Three published unsatisfactory reviews -> blacklist
         Sanctum::actingAs($carrierUser);
         for ($i = 0; $i < 3; $i++) {
-            $application = $this->application($carrierUser, $driver, 'rejected');
-            $this->postJson('/api/reviews', ['application_id' => $application->id, 'rating' => 1])->assertCreated();
+            $id = $this->leaveReview($this->application($carrierUser, $driver, 'rejected'), 1)
+                ->assertCreated()->json('review.id');
+
+            $this->publishReview(Review::find($id));
+            Sanctum::actingAs($carrierUser);
         }
         $this->assertTrue($driver->fresh()->is_blacklisted);
 
@@ -324,13 +419,17 @@ class ReputationAndHiringTest extends TestCase
 
         $this->assertFalse($driver->is_blacklisted);
 
-        // Eski baholar saqlanadi, lekin qayta blacklist qilmaydi.
+        // The old reviews survive but no longer count.
         $this->assertSame(3, Review::published()->where('driver_profile_id', $driver->id)->count());
 
-        $newApplication = $this->application($carrierUser, $driver, 'rejected');
         Sanctum::actingAs($carrierUser);
-        $this->postJson('/api/reviews', ['application_id' => $newApplication->id, 'rating' => 1])
-            ->assertCreated()
+        $newId = $this->leaveReview($this->application($carrierUser, $driver, 'rejected'), 1)
+            ->assertCreated()->json('review.id');
+
+        Sanctum::actingAs($this->admin());
+        $this->postJson("/api/admin/reviews/{$newId}/contacted")->assertOk();
+        $this->postJson("/api/admin/reviews/{$newId}/decision", ['decision' => 'publish'])
+            ->assertOk()
             ->assertJsonPath('blacklisted', false);
     }
 
@@ -360,6 +459,10 @@ class ReputationAndHiringTest extends TestCase
 
     protected function admin(): User
     {
+        if ($existing = User::where('email', 'admin@test.com')->first()) {
+            return $existing;
+        }
+
         $user = User::create([
             'name' => 'Admin', 'email' => 'admin@test.com',
             'password' => Hash::make('password'), 'role' => User::ROLE_ADMIN,

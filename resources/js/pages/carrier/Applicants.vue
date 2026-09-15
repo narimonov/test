@@ -2,32 +2,35 @@
     <div>
         <div class="d-flex justify-content-between align-items-start mb-3">
             <div>
-                <h4 class="mb-1">{{ job?.title || 'Arizachilar' }}</h4>
-                <p class="text-muted small mb-0">
-                    Arizachilar sizning kriteriyalaringiz bo'yicha ball olib, yuqoridan pastga saralangan.
-                </p>
+                <h4 class="page-title">{{ job?.title || 'Applicants' }}</h4>
+                <p class="page-lede">Scored against your criteria and sorted, strongest first.</p>
             </div>
-            <router-link :to="{ name: 'carrier.jobs' }" class="btn btn-light">Vakansiyalarga</router-link>
+            <div class="d-flex gap-2">
+                <router-link :to="{ name: 'carrier.matches', params: { id: $route.params.id } }"
+                             class="btn btn-outline-secondary">Matching drivers</router-link>
+                <router-link :to="{ name: 'carrier.jobs' }" class="btn btn-outline-secondary">Job posts</router-link>
+            </div>
         </div>
 
         <AlertBox :message="error" />
+        <AlertBox :message="notice" variant="success" />
 
         <div class="card mb-4">
             <div class="card-body">
                 <div class="row g-2 align-items-end">
                     <div class="col-md-3">
-                        <label class="form-label small mb-1">Saralash</label>
+                        <label class="form-label small mb-1">Sort by</label>
                         <select v-model="filters.sort" class="form-select" @change="load">
-                            <option value="score">Ball bo'yicha (yuqoridan)</option>
-                            <option value="date">Sana bo'yicha (yangi)</option>
-                            <option value="experience">Tajriba bo'yicha</option>
-                            <option value="safety">Safety bo'yicha (toza)</option>
+                            <option value="score">Score, highest first</option>
+                            <option value="date">Newest first</option>
+                            <option value="experience">Experience</option>
+                            <option value="safety">Safety, cleanest first</option>
                         </select>
                     </div>
                     <div class="col-md-2">
-                        <label class="form-label small mb-1">Daraja</label>
+                        <label class="form-label small mb-1">Grade</label>
                         <select v-model="filters.tier" class="form-select" @change="load">
-                            <option :value="null">Barchasi</option>
+                            <option :value="null">All</option>
                             <option value="A">A</option>
                             <option value="B">B</option>
                             <option value="C">C</option>
@@ -35,20 +38,20 @@
                         </select>
                     </div>
                     <div class="col-md-2">
-                        <label class="form-label small mb-1">Min. ball</label>
+                        <label class="form-label small mb-1">Min score</label>
                         <input v-model.number="filters.min_score" type="number" min="0" max="100"
                                class="form-control" @change="load">
                     </div>
                     <div class="col-md-2">
-                        <label class="form-label small mb-1">Holat</label>
+                        <label class="form-label small mb-1">Status</label>
                         <select v-model="filters.status" class="form-select" @change="load">
-                            <option :value="null">Barchasi</option>
+                            <option :value="null">All</option>
                             <option v-for="item in statuses" :key="item.value" :value="item.value">{{ item.label }}</option>
                         </select>
                     </div>
                     <div class="col-md-3 text-md-end">
                         <button class="btn btn-outline-secondary btn-sm" :disabled="loading" @click="load(true)">
-                            Ballarni qayta hisoblash
+                            Recalculate scores
                         </button>
                     </div>
                 </div>
@@ -59,27 +62,27 @@
             <div class="col-4 col-md-3">
                 <div class="card stat-card"><div class="card-body py-3">
                     <div class="stat-value">{{ summary.total }}</div>
-                    <div class="stat-label">Jami</div>
+                    <div class="stat-label">Total</div>
                 </div></div>
             </div>
             <div class="col-4 col-md-3">
                 <div class="card stat-card"><div class="card-body py-3">
                     <div class="stat-value text-success">{{ summary.qualified }}</div>
-                    <div class="stat-label">Mos keladi</div>
+                    <div class="stat-label">Qualified</div>
                 </div></div>
             </div>
             <div class="col-4 col-md-3">
                 <div class="card stat-card"><div class="card-body py-3">
                     <div class="stat-value text-danger">{{ summary.disqualified }}</div>
-                    <div class="stat-label">Knockout</div>
+                    <div class="stat-label">Knocked out</div>
                 </div></div>
             </div>
         </div>
 
-        <div v-if="loading" class="empty-state">Yuklanmoqda…</div>
+        <div v-if="loading" class="empty-state">Loading…</div>
 
         <div v-else-if="!applicants.length" class="empty-state">
-            Bu vakansiyaga hali ariza kelmagan.
+            No applications for this job yet.
         </div>
 
         <div v-else class="card">
@@ -87,12 +90,12 @@
                 <table class="table align-middle mb-0">
                     <thead>
                         <tr class="text-muted small">
-                            <th style="width: 90px">Ball</th>
+                            <th style="width: 90px">Score</th>
                             <th>Driver</th>
-                            <th>Tajriba</th>
+                            <th>Experience</th>
                             <th>Safety</th>
-                            <th>Joylashuv</th>
-                            <th>Holat</th>
+                            <th>Location</th>
+                            <th>Status</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -106,14 +109,14 @@
                                 <div class="text-muted small">{{ row.driver.phone || row.driver.email || '—' }}</div>
                             </td>
                             <td>
-                                {{ row.driver.years_experience }} yil
+                                {{ row.driver.years_experience }} yrs
                                 <div class="text-muted small">CDL {{ row.driver.cdl_class || '—' }}</div>
                             </td>
                             <td>
                                 <span :class="row.driver.accidents_3y ? 'text-danger' : 'text-success'">
-                                    {{ row.driver.accidents_3y }} avariya
+                                    {{ row.driver.accidents_3y }} accidents
                                 </span>
-                                <div class="text-muted small">{{ row.driver.moving_violations_3y }} violation</div>
+                                <div class="text-muted small">{{ row.driver.moving_violations_3y }} violations</div>
                             </td>
                             <td class="text-muted small">
                                 {{ [row.driver.city, row.driver.state].filter(Boolean).join(', ') || '—' }}
@@ -127,10 +130,10 @@
                                 </select>
                             </td>
                             <td class="text-end" @click.stop>
-                                <button class="btn btn-sm btn-outline-secondary me-1" @click="select(row)">Batafsil</button>
+                                <button class="btn btn-sm btn-outline-secondary me-1" @click="select(row)">Details</button>
                                 <button v-if="canReview(row)" class="btn btn-sm btn-outline-primary"
                                         @click="reviewing = row">
-                                    Baho
+                                    Review
                                 </button>
                             </td>
                         </tr>
@@ -142,12 +145,12 @@
         <ReviewModal
             v-if="reviewing"
             :application-id="reviewing.id"
-            :title="`${reviewing.driver.full_name} haqida baho`"
+            :title="`Review ${reviewing.driver.full_name}`"
             @close="reviewing = null"
             @saved="onReviewed"
         />
 
-        <!-- Driver tafsiloti -->
+        <!-- Driver detail -->
         <div v-if="selected" class="modal d-block" tabindex="-1" style="background: rgba(15,23,42,.5)"
              @click.self="selected = null">
             <div class="modal-dialog modal-lg modal-dialog-scrollable">
@@ -166,7 +169,7 @@
                             <ScorePill :score="selected.score || 0" :tier="selected.tier"
                                        :disqualified="selected.disqualified" />
                             <div class="small text-muted">
-                                Ariza sanasi: {{ date(selected.applied_at) }}
+                                Applied {{ date(selected.applied_at) }}
                             </div>
                         </div>
 
@@ -176,7 +179,7 @@
 
                         <DriverSummary :driver="selected.driver" class="mb-4" />
 
-                        <h6>Ball taqsimoti</h6>
+                        <h6>Score breakdown</h6>
                         <ScoreBreakdown :rows="selected.breakdown" :knockouts="selected.knockouts" />
                     </div>
                 </div>
@@ -210,6 +213,7 @@ export default {
             filters: { sort: 'score', tier: null, min_score: null, status: null },
             loading: true,
             error: null,
+            notice: null,
         };
     },
 
@@ -241,18 +245,14 @@ export default {
             this.selected = row;
         },
 
-        /** Baho faqat hamkorlik yakunlangandan keyin qoldiriladi. */
+        /** Reviews open once the relationship has ended. */
         canReview(row) {
             return ['hired', 'rejected'].includes(row.status);
         },
 
         onReviewed(data) {
             this.reviewing = null;
-
-            if (data.blacklisted) {
-                this.error = data.message;
-            }
-
+            this.notice = data.message;
             this.load();
         },
 
@@ -266,7 +266,7 @@ export default {
         },
 
         date(value) {
-            return value ? new Date(value).toLocaleDateString('uz-UZ') : '—';
+            return value ? new Date(value).toLocaleDateString('en-US') : '—';
         },
     },
 };

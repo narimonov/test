@@ -17,8 +17,7 @@ use Illuminate\Validation\ValidationException;
 class AuthController extends Controller
 {
     /**
-     * Ro'yxatdan o'tish. role = driver | carrier
-     * Driver bo'lsa bo'sh profil, carrier bo'lsa kompaniya yozuvi yaratiladi.
+     * Sign-up. role = driver | carrier
      */
     public function register(Request $request, CarrierVerificationService $carrierVerification)
     {
@@ -28,14 +27,20 @@ class AuthController extends Controller
             'phone'    => ['nullable', 'string', 'max:30', 'unique:users,phone'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'role'     => ['required', Rule::in([User::ROLE_DRIVER, User::ROLE_CARRIER])],
+
+            // Accepting the privacy notice is a condition of creating an account;
+            // SMS consent is separate because the TCPA treats it separately.
+            'privacy_accepted' => ['required', 'accepted'],
+            'privacy_version'  => ['required', 'string'],
+            'sms_consent'      => ['nullable', 'boolean'],
         ]);
 
         if ($data['role'] !== User::ROLE_CARRIER) {
             return $this->registerDriver($data);
         }
 
-        // Kompaniya uchun MC yoki DOT raqamlardan hech bo'lmasa bittasi shart.
-        // Alohida tekshiriladi, aks holda driver ro'yxatdan o'tishida ham talab qilinardi.
+        // A carrier needs an MC or a DOT number. Validated separately, so the
+        // rule does not fire for driver sign-ups.
         $identifiers = $request->validate([
             'dot_number' => ['required_without:mc_number', 'nullable', 'string', 'max:20'],
             'mc_number'  => ['required_without:dot_number', 'nullable', 'string', 'max:20'],
@@ -45,33 +50,27 @@ class AuthController extends Controller
     }
 
     /**
-     * Kompaniya: avval FMCSA tekshiruvi, keyin akkaunt.
+     * Carrier: FMCSA check first, account second.
      *
-     * Tasdiqlash kodi FMCSA'da ro'yxatdan o'tgan telefon/emailga yuboriladi —
-     * foydalanuvchi kiritganiga emas. Shuning uchun begona odam kompaniya
-     * nomidan ro'yxatdan o'ta olmaydi.
+     * The confirmation code goes to the phone or email FMCSA holds for the
+     * carrier, not to whatever the user typed, so an outsider cannot open an
+     * account in a company's name.
      */
     protected function registerCarrier(array $data, CarrierVerificationService $carrierVerification)
     {
-        // Akkaunt yaratishdan oldin tekshiramiz — FMCSA rad qilsa hech narsa saqlanmaydi.
+        // Check before creating anything: if FMCSA says no, nothing is saved.
         $record = $carrierVerification->lookup($data['dot_number'] ?? null, $data['mc_number'] ?? null);
         $carrierVerification->assertNotAlreadyRegistered($record);
 
         if (! $record->hasContact()) {
             throw ValidationException::withMessages([
-                'dot_number' => ['FMCSA bazasida bu kompaniya uchun telefon/email yo\'q. '
-                    . 'Qo\'lda tekshiruv uchun support bilan bog\'laning.'],
+                'dot_number' => ['FMCSA has no phone or email on file for this carrier. '
+                    . 'Contact support for a manual check.'],
             ]);
         }
 
         $carrier = DB::transaction(function () use ($data, $record, $carrierVerification) {
-            $user = User::create([
-                'name'     => $data['name'],
-                'email'    => $data['email'],
-                'phone'    => $data['phone'] ?? null,
-                'password' => Hash::make($data['password']),
-                'role'     => User::ROLE_CARRIER,
-            ]);
+            $user = $this->createUser($data, User::ROLE_CARRIER);
 
             $carrier = Carrier::create([
                 'user_id'       => $user->id,
@@ -94,23 +93,17 @@ class AuthController extends Controller
                 'city'               => $record->city,
                 'state'              => $record->state,
             ],
-            // Kod qaysi kanalga yuborilishini foydalanuvchi tanlaydi.
+            // The user picks which contact the code goes to.
             'channels' => $carrierVerification->availableChannels($carrier),
-            'message'  => 'Kompaniya FMCSA bo\'yicha tasdiqlandi. Endi FMCSA\'dagi '
-                . 'rasmiy kontaktga yuboriladigan kodni tasdiqlang.',
+            'message'  => 'Company confirmed against FMCSA. Now confirm the code we send '
+                . 'to the official contact FMCSA holds for it.',
         ], 201);
     }
 
     protected function registerDriver(array $data)
     {
         $user = DB::transaction(function () use ($data) {
-            $user = User::create([
-                'name'     => $data['name'],
-                'email'    => $data['email'],
-                'phone'    => $data['phone'] ?? null,
-                'password' => Hash::make($data['password']),
-                'role'     => User::ROLE_DRIVER,
-            ]);
+            $user = $this->createUser($data, User::ROLE_DRIVER);
 
             $parts = preg_split('/\s+/', trim($data['name']), 2);
 
@@ -146,13 +139,13 @@ class AuthController extends Controller
 
         if (! $user || ! Hash::check($data['password'], $user->password)) {
             throw ValidationException::withMessages([
-                'email' => ['Email yoki parol noto\'g\'ri.'],
+                'email' => ['Those credentials do not match.'],
             ]);
         }
 
         if ($user->is_blocked) {
             return response()->json([
-                'message' => 'Akkauntingiz bloklangan.' . ($user->blocked_reason ? ' Sabab: ' . $user->blocked_reason : ''),
+                'message' => 'Your account is blocked.' . ($user->blocked_reason ? ' Reason: ' . $user->blocked_reason : ''),
                 'code'    => 'account_blocked',
             ], 403);
         }
@@ -167,7 +160,7 @@ class AuthController extends Controller
     {
         $request->user()->currentAccessToken()->delete();
 
-        return response()->json(['message' => 'Chiqildi.']);
+        return response()->json(['message' => 'Signed out.']);
     }
 
     public function me(Request $request)
@@ -176,10 +169,11 @@ class AuthController extends Controller
     }
 
     /**
-     * Tasdiqlash kodini yuborish (phone yoki email).
+     * Send a verification code by phone or email.
      *
-     * Hozircha haqiqiy SMS/email gateway ulanmagan — kod log'ga yoziladi va
-     * local muhitda javobda qaytariladi. Twilio/SES ulanganda shu joy o'zgaradi.
+     * No SMS or email gateway is connected yet: the code is logged and, in
+     * local environments, returned in the response. Connecting Twilio or SES
+     * changes only this method.
      */
     public function sendCode(Request $request)
     {
@@ -197,7 +191,7 @@ class AuthController extends Controller
         }
 
         return response()->json([
-            'message'      => 'Tasdiqlash kodi yuborildi.',
+            'message'      => 'Verification code sent.',
             'verification' => $this->issueCode($user, $data['channel']),
         ]);
     }
@@ -215,7 +209,7 @@ class AuthController extends Controller
 
         if ($user->verification_code === null || $expired || ! hash_equals($user->verification_code, $data['code'])) {
             throw ValidationException::withMessages([
-                'code' => ['Kod noto\'g\'ri yoki muddati tugagan.'],
+                'code' => ['That code is wrong or has expired.'],
             ]);
         }
 
@@ -230,13 +224,13 @@ class AuthController extends Controller
         $user->save();
 
         return response()->json([
-            'message' => 'Tasdiqlandi.',
+            'message' => 'Verified.',
             'user'    => $this->userPayload($user->fresh()),
         ]);
     }
 
     /**
-     * Kompaniya uchun: kod qaysi FMCSA kontaktlariga yuborilishi mumkin.
+     * Which FMCSA contacts a carrier's code can be sent to.
      */
     public function carrierChannels(Request $request, CarrierVerificationService $service)
     {
@@ -253,7 +247,7 @@ class AuthController extends Controller
         ]);
     }
 
-    /** Kompaniya uchun: kodni FMCSA kontaktiga yuborish. */
+    /** Send the carrier's code to the chosen FMCSA contact. */
     public function sendCarrierCode(Request $request, CarrierVerificationService $service)
     {
         $data = $request->validate([
@@ -261,12 +255,12 @@ class AuthController extends Controller
         ]);
 
         return response()->json([
-            'message'      => 'Kod FMCSA\'da ro\'yxatdan o\'tgan kontaktga yuborildi.',
+            'message'      => 'Code sent to the contact FMCSA holds for this carrier.',
             'verification' => $service->issueCode($this->carrierOrFail($request), $data['channel']),
         ]);
     }
 
-    /** Kompaniya uchun: kodni tasdiqlash. Shundan keyin ilova ochiladi. */
+    /** Confirm the carrier's code. The app opens after this. */
     public function verifyCarrierCode(Request $request, CarrierVerificationService $service)
     {
         $data = $request->validate(['code' => ['required', 'string']]);
@@ -274,7 +268,7 @@ class AuthController extends Controller
         $carrier = $service->confirmCode($this->carrierOrFail($request), $data['code']);
 
         return response()->json([
-            'message' => 'Kompaniya tasdiqlandi.',
+            'message' => 'Company verified.',
             'carrier' => $carrier,
             'user'    => $this->userPayload($request->user()->fresh()),
         ]);
@@ -282,11 +276,35 @@ class AuthController extends Controller
 
     // ------------------------------------------------------------------
 
+    /**
+     * Creates the account and stores the consents given at sign-up, with the
+     * IP they came from — a consent you cannot evidence is no consent.
+     */
+    protected function createUser(array $data, string $role): User
+    {
+        $user = User::create([
+            'name'     => $data['name'],
+            'email'    => $data['email'],
+            'phone'    => $data['phone'] ?? null,
+            'password' => Hash::make($data['password']),
+            'role'     => $role,
+        ]);
+
+        $user->forceFill([
+            'privacy_accepted_at' => now(),
+            'privacy_version'     => $data['privacy_version'],
+            'consent_ip'          => request()->ip(),
+            'sms_consent_at'      => ! empty($data['sms_consent']) ? now() : null,
+        ])->save();
+
+        return $user->fresh();
+    }
+
     protected function carrierOrFail(Request $request): Carrier
     {
         $carrier = optional($request->user())->carrier;
 
-        abort_unless($carrier, 403, 'Bu amal faqat kompaniya akkaunti uchun.');
+        abort_unless($carrier, 403, 'This is only available to company accounts.');
 
         return $carrier;
     }
@@ -311,7 +329,7 @@ class AuthController extends Controller
             'channel'    => $channel,
             'sent_to'    => $channel === 'phone' ? $user->phone : $user->email,
             'expires_in' => 15 * 60,
-            // Gateway ulanmaguncha kodni qaytaramiz, aks holda test qilib bo'lmaydi.
+            // Returned until a gateway is connected, otherwise it cannot be tested.
             'debug_code' => config('app.debug') ? $code : null,
         ], fn ($value) => $value !== null);
     }
@@ -336,6 +354,12 @@ class AuthController extends Controller
             'is_blacklisted'    => $user->isCarrier()
                 ? (bool) optional($user->carrier)->is_blacklisted
                 : (bool) optional($user->driverProfile)->is_blacklisted,
+
+            // Consent state, so the app can prompt when the policy moves on.
+            'privacy_version'             => $user->privacy_version,
+            'has_current_privacy_consent' => $user->has_current_privacy_consent,
+            'sms_consent_at'              => $user->sms_consent_at,
+            'mvr_consent_at'              => $user->mvr_consent_at,
         ];
     }
 }

@@ -1,16 +1,16 @@
 <template>
     <div>
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h4 class="mb-0">Vakansiyalar</h4>
-            <button class="btn btn-primary" @click="openForm()">Yangi vakansiya</button>
+            <h4 class="page-title mb-0">Job posts</h4>
+            <button class="btn btn-primary" @click="openForm()">New job post</button>
         </div>
 
         <AlertBox :message="error" :errors="errors" />
 
-        <div v-if="loading" class="empty-state">Yuklanmoqda…</div>
+        <div v-if="loading" class="empty-state">Loading…</div>
 
         <div v-else-if="!jobs.length" class="empty-state">
-            Hali vakansiya joylamagansiz.
+            No job posts yet.
         </div>
 
         <div v-else class="card">
@@ -18,11 +18,11 @@
                 <table class="table align-middle mb-0">
                     <thead>
                         <tr class="text-muted small">
-                            <th>Lavozim</th>
-                            <th>Joylashuv</th>
+                            <th>Title</th>
+                            <th>Location</th>
                             <th>Route</th>
-                            <th class="text-center">Arizalar</th>
-                            <th class="text-center">Holat</th>
+                            <th class="text-center">Applicants</th>
+                            <th class="text-center">Status</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -34,16 +34,20 @@
                             <td class="text-center">{{ job.applications_count }}</td>
                             <td class="text-center">
                                 <span class="badge" :class="job.is_open ? 'bg-success' : 'bg-secondary'">
-                                    {{ job.is_open ? 'Ochiq' : 'Yopiq' }}
+                                    {{ job.is_open ? 'Open' : 'Closed' }}
                                 </span>
                             </td>
                             <td class="text-end">
                                 <router-link :to="{ name: 'carrier.applicants', params: { id: job.id } }"
                                              class="btn btn-sm btn-outline-primary me-1">
-                                    Arizachilar
+                                    Applicants
                                 </router-link>
-                                <button class="btn btn-sm btn-outline-secondary me-1" @click="openForm(job)">Tahrir</button>
-                                <button class="btn btn-sm btn-outline-danger" @click="remove(job)">O'chirish</button>
+                                <router-link :to="{ name: 'carrier.matches', params: { id: job.id } }"
+                                             class="btn btn-sm btn-outline-primary me-1">
+                                    Matches
+                                </router-link>
+                                <button class="btn btn-sm btn-outline-secondary me-1" @click="openForm(job)">Edit</button>
+                                <button class="btn btn-sm btn-outline-danger" @click="remove(job)">Delete</button>
                             </td>
                         </tr>
                     </tbody>
@@ -56,23 +60,23 @@
             <div class="modal-dialog modal-lg modal-dialog-scrollable">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">{{ form.id ? 'Vakansiyani tahrirlash' : 'Yangi vakansiya' }}</h5>
+                        <h5 class="modal-title">{{ form.id ? 'Edit job post' : 'New job post' }}</h5>
                         <button type="button" class="btn-close" @click="showForm = false"></button>
                     </div>
                     <form @submit.prevent="save">
                         <div class="modal-body">
                             <div class="row g-3">
                                 <div class="col-12">
-                                    <label class="form-label">Lavozim nomi</label>
+                                    <label class="form-label">Job title</label>
                                     <input v-model="form.title" type="text" class="form-control" required
                                            placeholder="OTR CDL-A Driver">
                                 </div>
                                 <div class="col-md-5">
-                                    <label class="form-label">Shahar</label>
+                                    <label class="form-label">City</label>
                                     <input v-model="form.city" type="text" class="form-control">
                                 </div>
                                 <div class="col-md-3">
-                                    <label class="form-label">Shtat</label>
+                                    <label class="form-label">State</label>
                                     <select v-model="form.state" class="form-select">
                                         <option :value="null">—</option>
                                         <option v-for="state in states" :key="state" :value="state">{{ state }}</option>
@@ -83,57 +87,57 @@
                                     <input v-model="form.equipment" type="text" class="form-control" placeholder="Dry Van">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Route turi</label>
+                                    <label class="form-label">Route type</label>
                                     <select v-model="form.route_type" class="form-select">
                                         <option :value="null">—</option>
                                         <option v-for="item in routeTypes" :key="item.value" :value="item.value">{{ item.label }}</option>
                                     </select>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Driver turi</label>
+                                    <label class="form-label">Driver type</label>
                                     <select v-model="form.driver_type" class="form-select">
                                         <option v-for="item in driverTypes" :key="item.value" :value="item.value">{{ item.label }}</option>
                                     </select>
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="form-label">Maosh (dan)</label>
+                                    <label class="form-label">Pay from</label>
                                     <input v-model.number="payMin" type="number" step="0.01" min="0" class="form-control">
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="form-label">Maosh (gacha)</label>
+                                    <label class="form-label">Pay to</label>
                                     <input v-model.number="payMax" type="number" step="0.01" min="0" class="form-control">
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="form-label">Birlik</label>
+                                    <label class="form-label">Unit</label>
                                     <select v-model="form.pay_unit" class="form-select">
                                         <option :value="null">—</option>
                                         <option value="per_mile">$/mile</option>
-                                        <option value="per_week">$/hafta</option>
+                                        <option value="per_week">$/week</option>
                                         <option value="percentage">%</option>
                                     </select>
                                 </div>
                                 <div class="col-12">
-                                    <label class="form-label">Tavsif</label>
+                                    <label class="form-label">Description</label>
                                     <textarea v-model="form.description" rows="5" class="form-control"></textarea>
                                 </div>
 
                                 <div class="col-12">
                                     <div class="border rounded p-3 bg-light">
-                                        <div class="fw-semibold mb-2">Shu vakansiya uchun minimal talab</div>
+                                        <div class="fw-semibold mb-2">Requirements for this job</div>
                                         <p class="text-muted small">
-                                            Bu yerda kiritilgani umumiy knockout kriteriyalarni shu vakansiya
-                                            uchun bekor qiladi.
+                                            These override the general knockout rules for this job only,
+                                            and they drive the list of matching drivers.
                                         </p>
                                         <div class="row g-3">
                                             <div class="col-md-6">
-                                                <label class="form-label small">Minimal tajriba (yil)</label>
+                                                <label class="form-label small">Minimum experience (years)</label>
                                                 <input v-model.number="minExperience" type="number" step="0.5" min="0"
                                                        class="form-control form-control-sm">
                                             </div>
                                             <div class="col-md-6">
-                                                <label class="form-label small">CDL klass</label>
+                                                <label class="form-label small">CDL class</label>
                                                 <select v-model="requiredCdl" class="form-select form-select-sm">
-                                                    <option :value="null">Standart (A)</option>
+                                                    <option :value="null">Default (A)</option>
                                                     <option value="A">A</option>
                                                     <option value="B">B</option>
                                                     <option value="C">C</option>
@@ -146,15 +150,15 @@
                                 <div class="col-12">
                                     <div class="form-check">
                                         <input id="is_open" v-model="form.is_open" type="checkbox" class="form-check-input">
-                                        <label class="form-check-label" for="is_open">Vakansiya ochiq</label>
+                                        <label class="form-check-label" for="is_open">Job is open</label>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-light" @click="showForm = false">Bekor</button>
+                            <button type="button" class="btn btn-light" @click="showForm = false">Cancel</button>
                             <button class="btn btn-primary" :disabled="saving">
-                                {{ saving ? 'Saqlanmoqda…' : 'Saqlash' }}
+                                {{ saving ? 'Saving…' : 'Save' }}
                             </button>
                         </div>
                     </form>
@@ -217,13 +221,13 @@ export default {
             set(v) { this.form.pay_max_cents = v ? Math.round(v * 100) : null; },
         },
 
-        /** requirements — knockout override'lari, UI'da ikkita sodda maydon. */
+        /** requirements holds knockout overrides; the UI exposes two of them. */
         minExperience: {
             get() {
                 return this.ruleValue('years_experience');
             },
             set(value) {
-                this.setRule('years_experience', 'gte', value, 'Tajriba talabga yetmaydi');
+                this.setRule('years_experience', 'gte', value, 'Experience below the minimum');
             },
         },
         requiredCdl: {
@@ -233,7 +237,7 @@ export default {
                 return Array.isArray(value) ? value[0] : value;
             },
             set(value) {
-                this.setRule('cdl_class', 'in', value ? [value] : null, 'CDL klassi mos emas');
+                this.setRule('cdl_class', 'in', value ? [value] : null, 'Wrong CDL class');
             },
         },
     },
@@ -307,7 +311,7 @@ export default {
         },
 
         async remove(job) {
-            if (!window.confirm(`"${job.title}" vakansiyasi o'chirilsinmi? Unga kelgan arizalar ham o'chadi.`)) {
+            if (!window.confirm(`Delete "${job.title}"? Its applications go with it.`)) {
                 return;
             }
 

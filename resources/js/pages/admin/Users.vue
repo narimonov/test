@@ -1,6 +1,6 @@
 <template>
     <div>
-        <h4 class="mb-3">Foydalanuvchilar</h4>
+        <h4 class="page-title mb-3">Users</h4>
 
         <AlertBox :message="error" />
         <AlertBox :message="notice" variant="success" />
@@ -10,43 +10,43 @@
                 <div class="row g-2">
                     <div class="col-md-5">
                         <input v-model="filters.q" type="search" class="form-control"
-                               placeholder="Ism, email yoki telefon" @keyup.enter="load()">
+                               placeholder="Name, email or phone" @keyup.enter="load()">
                     </div>
                     <div class="col-md-3">
                         <select v-model="filters.role" class="form-select" @change="load()">
-                            <option :value="null">Barcha rol</option>
+                            <option :value="null">All roles</option>
                             <option value="driver">Driver</option>
-                            <option value="carrier">Kompaniya</option>
+                            <option value="carrier">Carrier</option>
                             <option value="admin">Admin</option>
                         </select>
                     </div>
                     <div class="col-md-3">
                         <select v-model="filters.blocked" class="form-select" @change="load()">
-                            <option :value="null">Barchasi</option>
-                            <option :value="true">Faqat bloklangan</option>
-                            <option :value="false">Faqat faol</option>
+                            <option :value="null">All</option>
+                            <option :value="true">Blocked only</option>
+                            <option :value="false">Active only</option>
                         </select>
                     </div>
                     <div class="col-md-1">
-                        <button class="btn btn-outline-secondary w-100" @click="load()">Izlash</button>
+                        <button class="btn btn-outline-secondary w-100" @click="load()">Search</button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div v-if="loading" class="empty-state">Yuklanmoqda…</div>
+        <div v-if="loading" class="empty-state">Loading…</div>
 
-        <div v-else-if="!users.length" class="empty-state">Foydalanuvchi topilmadi.</div>
+        <div v-else-if="!users.length" class="empty-state">No users found.</div>
 
         <div v-else class="card">
             <div class="table-responsive">
                 <table class="table align-middle mb-0">
                     <thead>
                         <tr class="text-muted small">
-                            <th>Foydalanuvchi</th>
-                            <th>Rol</th>
-                            <th>Kompaniya</th>
-                            <th>Holat</th>
+                            <th>User</th>
+                            <th>Role</th>
+                            <th>Company</th>
+                            <th>Status</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -66,15 +66,15 @@
                             </td>
                             <td>
                                 <span v-if="user.is_blocked" class="badge bg-danger" :title="user.blocked_reason">
-                                    Bloklangan
+                                    Blocked
                                 </span>
-                                <span v-else class="badge bg-success">Faol</span>
+                                <span v-else class="badge bg-success">Active</span>
                             </td>
                             <td class="text-end">
                                 <button v-if="user.is_blocked" class="btn btn-sm btn-outline-secondary"
-                                        @click="unblock(user)">Blokni olish</button>
+                                        @click="unblock(user)">Unblock</button>
                                 <button v-else-if="user.role !== 'admin'" class="btn btn-sm btn-outline-danger"
-                                        @click="block(user)">Bloklash</button>
+                                        @click="block(user)">Block</button>
                             </td>
                         </tr>
                     </tbody>
@@ -85,13 +85,13 @@
         <nav v-if="meta.last_page > 1" class="mt-3">
             <ul class="pagination justify-content-center">
                 <li class="page-item" :class="{ disabled: meta.current_page === 1 }">
-                    <button class="page-link" @click="load(meta.current_page - 1)">Oldingi</button>
+                    <button class="page-link" @click="load(meta.current_page - 1)">Previous</button>
                 </li>
                 <li class="page-item disabled">
                     <span class="page-link">{{ meta.current_page }} / {{ meta.last_page }}</span>
                 </li>
                 <li class="page-item" :class="{ disabled: meta.current_page === meta.last_page }">
-                    <button class="page-link" @click="load(meta.current_page + 1)">Keyingi</button>
+                    <button class="page-link" @click="load(meta.current_page + 1)">Next</button>
                 </li>
             </ul>
         </nav>
@@ -145,7 +145,7 @@ export default {
         },
 
         async block(user) {
-            const reason = window.prompt(`${user.name} nima sababdan bloklanmoqda?`);
+            const reason = window.prompt(`Why is ${user.name} being blocked?`);
 
             if (!reason) return;
 

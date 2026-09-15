@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Carrier;
 use App\Models\JobPost;
+use App\Services\PlanGate;
 use Illuminate\Http\Request;
 
 class JobPostController extends Controller
@@ -19,11 +20,19 @@ class JobPostController extends Controller
         return response()->json($jobs);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, PlanGate $plans)
     {
-        $job = JobPost::create($this->validated($request) + [
-            'carrier_id' => $this->carrierFor($request)->id,
-        ]);
+        $carrier = $this->carrierFor($request);
+
+        if ($plans->hasReachedJobLimit($carrier)) {
+            return response()->json([
+                'message' => 'Your plan allows ' . $plans->maxActiveJobs($carrier) . ' active job posts. '
+                    . 'Close one or upgrade to post more.',
+                'code'    => 'plan_limit_reached',
+            ], 402);
+        }
+
+        $job = JobPost::create($this->validated($request) + ['carrier_id' => $carrier->id]);
 
         return response()->json(['job' => $job], 201);
     }
@@ -50,7 +59,7 @@ class JobPostController extends Controller
 
         $jobPost->delete();
 
-        return response()->json(['message' => 'Vakansiya o\'chirildi.']);
+        return response()->json(['message' => 'Job deleted.']);
     }
 
     protected function validated(Request $request): array
@@ -81,6 +90,6 @@ class JobPostController extends Controller
 
     protected function authorizeCarrier(Request $request, JobPost $jobPost): void
     {
-        abort_unless($jobPost->carrier_id === $this->carrierFor($request)->id, 403, 'Bu vakansiya sizniki emas.');
+        abort_unless($jobPost->carrier_id === $this->carrierFor($request)->id, 403, 'This job is not yours.');
     }
 }

@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 class EnsureVerified
 {
     /**
-     * Telefon yoki email tasdiqlangan bo'lishi shart.
+     * Requires a confirmed phone or email.
      */
     public function handle(Request $request, Closure $next)
     {
@@ -16,7 +16,7 @@ class EnsureVerified
 
         if (! $user || ! $user->is_verified) {
             return response()->json([
-                'message' => 'Avval telefon yoki email manzilingizni tasdiqlang.',
+                'message' => 'Confirm your phone or email address first.',
                 'code'    => 'verification_required',
             ], 403);
         }

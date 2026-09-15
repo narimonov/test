@@ -22,7 +22,7 @@ class DriverDocument extends Model
         'processed_at'        => 'datetime',
     ];
 
-    // Asl rasm yo'li hech qachon API javobiga tushmasligi kerak.
+    // File paths never appear in an API response.
     protected $hidden = ['original_path', 'pdf_path'];
 
     protected $appends = ['type_label', 'is_expired'];

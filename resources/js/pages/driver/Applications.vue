@@ -1,14 +1,16 @@
 <template>
     <div>
-        <h4 class="mb-3">Arizalarim</h4>
+        <div class="mb-4"><h4 class="page-title">My applications</h4>
+            <p class="page-lede">Where each one stands, and where you can leave a review.</p></div>
 
         <AlertBox :message="error" />
+        <AlertBox :message="notice" variant="success" />
 
-        <div v-if="loading" class="empty-state">Yuklanmoqda…</div>
+        <div v-if="loading" class="empty-state">Loading…</div>
 
         <div v-else-if="!applications.length" class="empty-state">
-            Hali ariza bermagansiz.
-            <router-link :to="{ name: 'driver.jobs' }">Vakansiyalarni ko'rish</router-link>
+            You have not applied to anything yet.
+            <router-link :to="{ name: 'driver.jobs' }">Browse open jobs</router-link>
         </div>
 
         <div v-else class="card">
@@ -16,10 +18,10 @@
                 <table class="table align-middle mb-0">
                     <thead>
                         <tr class="text-muted small">
-                            <th>Vakansiya</th>
-                            <th>Kompaniya</th>
-                            <th>Sana</th>
-                            <th>Holat</th>
+                            <th>Job</th>
+                            <th>Company</th>
+                            <th>Applied</th>
+                            <th>Status</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -32,7 +34,7 @@
                             <td class="text-end">
                                 <button v-if="canReview(application)" class="btn btn-sm btn-outline-primary"
                                         @click="reviewing = application">
-                                    Kompaniyaga baho
+                                    Review carrier
                                 </button>
                             </td>
                         </tr>
@@ -44,7 +46,7 @@
         <ReviewModal
             v-if="reviewing"
             :application-id="reviewing.id"
-            :title="`${reviewing.job_post ? reviewing.job_post.carrier.company_name : 'Kompaniya'} haqida baho`"
+            :title="`Review ${reviewing.job_post ? reviewing.job_post.carrier.company_name : 'this carrier'}`"
             @close="reviewing = null"
             @saved="onReviewed"
         />
@@ -70,6 +72,7 @@ export default {
             reviewing: null,
             loading: true,
             error: null,
+            notice: null,
         };
     },
 
@@ -89,18 +92,19 @@ export default {
             }
         },
 
-        /** Baho faqat hamkorlik yakunlangandan keyin qoldiriladi. */
+        /** Reviews open once the relationship has ended. */
         canReview(application) {
             return ['hired', 'rejected'].includes(application.status);
         },
 
-        onReviewed() {
+        onReviewed(data) {
             this.reviewing = null;
+            this.notice = data.message;
             this.load();
         },
 
         date(value) {
-            return value ? new Date(value).toLocaleDateString('uz-UZ') : '—';
+            return value ? new Date(value).toLocaleDateString('en-US') : '—';
         },
     },
 };

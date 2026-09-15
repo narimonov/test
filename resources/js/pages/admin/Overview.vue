@@ -1,11 +1,11 @@
 <template>
     <div>
-        <h4 class="mb-1">Admin paneli</h4>
-        <p class="text-muted small mb-4">Butun platforma bo'yicha umumiy holat</p>
+        <h4 class="page-title mb-1">Admin</h4>
+        <p class="page-lede mb-4">Platform-wide state</p>
 
         <AlertBox :message="error" />
 
-        <div v-if="loading" class="empty-state">Yuklanmoqda…</div>
+        <div v-if="loading" class="empty-state">Loading…</div>
 
         <template v-else>
             <div class="row g-3 mb-4">
@@ -55,10 +55,10 @@ export default {
             if (!this.data) return [];
 
             return [
-                { label: 'Foydalanuvchi', value: this.data.users.total },
-                { label: 'Tasdiqlangan kompaniya', value: this.data.carriers.fmcsa_verified },
-                { label: 'Ochiq vakansiya', value: this.data.activity.open_jobs },
-                { label: 'Kutilayotgan apelyatsiya', value: this.data.activity.pending_appeals, variant: 'text-warning' },
+                { label: 'Users', value: this.data.users.total },
+                { label: 'Verified carriers', value: this.data.carriers.fmcsa_verified },
+                { label: 'Open jobs', value: this.data.activity.open_jobs },
+                { label: 'Pending appeals', value: this.data.activity.pending_appeals, variant: 'text-warning' },
             ];
         },
 
@@ -67,37 +67,37 @@ export default {
 
             return [
                 {
-                    title: 'Foydalanuvchilar',
+                    title: 'Users',
                     rows: [
-                        { label: 'Driverlar', value: this.data.users.drivers },
-                        { label: 'Kompaniyalar', value: this.data.users.carriers },
-                        { label: 'Bloklangan', value: this.data.users.blocked },
-                        { label: 'Shu haftada qo\'shilgan', value: this.data.users.new_this_week },
+                        { label: 'Drivers', value: this.data.users.drivers },
+                        { label: 'Carriers', value: this.data.users.carriers },
+                        { label: 'Blocked', value: this.data.users.blocked },
+                        { label: 'Joined this week', value: this.data.users.new_this_week },
                     ],
                 },
                 {
-                    title: 'Kompaniyalar',
+                    title: 'Carriers',
                     rows: [
-                        { label: 'Jami', value: this.data.carriers.total },
-                        { label: 'FMCSA tasdiqlangan', value: this.data.carriers.fmcsa_verified },
-                        { label: 'Obunali', value: this.data.carriers.subscribed },
-                        { label: 'Blacklist', value: this.data.carriers.blacklisted },
+                        { label: 'Total', value: this.data.carriers.total },
+                        { label: 'FMCSA verified', value: this.data.carriers.fmcsa_verified },
+                        { label: 'Subscribed', value: this.data.carriers.subscribed },
+                        { label: 'Blacklisted', value: this.data.carriers.blacklisted },
                     ],
                 },
                 {
-                    title: 'Driverlar',
+                    title: 'Drivers',
                     rows: [
-                        { label: 'Jami profil', value: this.data.drivers.total },
-                        { label: 'Ishga olingan', value: this.data.drivers.hired },
-                        { label: 'Blacklist', value: this.data.drivers.blacklisted },
+                        { label: 'Profiles', value: this.data.drivers.total },
+                        { label: 'Hired', value: this.data.drivers.hired },
+                        { label: 'Blacklisted', value: this.data.drivers.blacklisted },
                     ],
                 },
                 {
-                    title: 'Faollik',
+                    title: 'Activity',
                     rows: [
-                        { label: 'Arizalar', value: this.data.activity.applications },
-                        { label: 'Baholar', value: this.data.activity.reviews },
-                        { label: 'Qoniqarsiz baholar', value: this.data.activity.negative_reviews },
+                        { label: 'Applications', value: this.data.activity.applications },
+                        { label: 'Published reviews', value: this.data.activity.reviews },
+                        { label: 'Unsatisfactory', value: this.data.activity.negative_reviews },
                     ],
                 },
             ];

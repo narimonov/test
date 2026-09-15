@@ -1,9 +1,9 @@
 <template>
     <div>
-        <h4 class="mb-1">Blacklist apelyatsiyalari</h4>
+        <h4 class="page-title mb-1">Blacklist appeals</h4>
         <p class="text-muted small mb-4">
-            Qabul qilsangiz blacklist olib tashlanadi va eski qoniqarsiz baholar
-            qayta hisoblanmaydi (aks holda darrov qaytib tushardi).
+            Approving lifts the blacklist and stops the old unsatisfactory reviews from
+            counting again — otherwise the account would be re-listed the same day.
         </p>
 
         <AlertBox :message="error" />
@@ -17,9 +17,9 @@
             </button>
         </div>
 
-        <div v-if="loading" class="empty-state">Yuklanmoqda…</div>
+        <div v-if="loading" class="empty-state">Loading…</div>
 
-        <div v-else-if="!appeals.length" class="empty-state">Bu bo'limda apelyatsiya yo'q.</div>
+        <div v-else-if="!appeals.length" class="empty-state">Nothing in this queue.</div>
 
         <div v-else class="row g-3">
             <div v-for="appeal in appeals" :key="appeal.id" class="col-12">
@@ -29,7 +29,7 @@
                             <div>
                                 <div class="fw-semibold">{{ subjectName(appeal) }}</div>
                                 <div class="text-muted small">
-                                    {{ appeal.subject_type === 'driver' ? 'Driver' : 'Kompaniya' }}
+                                    {{ appeal.subject_type === 'driver' ? 'Driver' : 'Carrier' }}
                                     · {{ appeal.submitted_by ? appeal.submitted_by.email : '—' }}
                                     · {{ date(appeal.created_at) }}
                                 </div>
@@ -39,20 +39,20 @@
                             </span>
                         </div>
 
-                        <div class="text-muted small mb-1">Blacklist sababi: {{ blacklistReason(appeal) || '—' }}</div>
+                        <div class="text-muted small mb-1">Blacklist reason: {{ blacklistReason(appeal) || '—' }}</div>
 
                         <p class="mb-3" style="white-space: pre-line">{{ appeal.reason }}</p>
 
                         <div v-if="appeal.status === 'pending'" class="d-flex gap-2">
                             <button class="btn btn-sm btn-success" @click="decide(appeal, 'approved')">
-                                Qabul qilish
+                                Approve
                             </button>
                             <button class="btn btn-sm btn-outline-danger" @click="decide(appeal, 'rejected')">
-                                Rad etish
+                                Reject
                             </button>
                         </div>
                         <div v-else-if="appeal.decision_note" class="text-muted small">
-                            Qaror izohi: {{ appeal.decision_note }}
+                            Decision note: {{ appeal.decision_note }}
                         </div>
                     </div>
                 </div>
@@ -75,10 +75,10 @@ export default {
             appeals: [],
             status: 'pending',
             statuses: [
-                { value: 'pending', label: 'Kutilmoqda' },
-                { value: 'approved', label: 'Qabul qilingan' },
-                { value: 'rejected', label: 'Rad etilgan' },
-                { value: 'all', label: 'Barchasi' },
+                { value: 'pending', label: 'Pending' },
+                { value: 'approved', label: 'Approved' },
+                { value: 'rejected', label: 'Rejected' },
+                { value: 'all', label: 'All' },
             ],
             loading: true,
             error: null,
@@ -107,10 +107,10 @@ export default {
 
         async decide(appeal, decision) {
             const note = window.prompt(
-                decision === 'approved' ? 'Qabul qilish izohi (ixtiyoriy)' : 'Rad etish sababi (ixtiyoriy)'
+                decision === 'approved' ? 'Note (optional)' : 'Why is this rejected?'
             );
 
-            // Prompt bekor qilinsa hech narsa qilmaymiz.
+            // Cancelling the prompt does nothing.
             if (note === null) return;
 
             try {
@@ -137,7 +137,7 @@ export default {
         },
 
         statusLabel(status) {
-            return { pending: 'Kutilmoqda', approved: 'Qabul qilindi', rejected: 'Rad etildi' }[status] || status;
+            return { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' }[status] || status;
         },
 
         statusVariant(status) {
@@ -145,7 +145,7 @@ export default {
         },
 
         date(value) {
-            return value ? new Date(value).toLocaleDateString('uz-UZ') : '—';
+            return value ? new Date(value).toLocaleDateString('en-US') : '—';
         },
     },
 };

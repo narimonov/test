@@ -1,6 +1,6 @@
 <template>
     <span class="score-pill" :class="disqualified ? 'tier-out' : `tier-${tier || 'D'}`" :title="title">
-        {{ disqualified ? 'RAD' : score }}
+        {{ disqualified ? 'OUT' : score }}
         <small v-if="!disqualified && tier" class="ms-1 fw-normal">{{ tier }}</small>
     </span>
 </template>
@@ -18,8 +18,8 @@ export default {
     computed: {
         title() {
             return this.disqualified
-                ? 'Knockout kriteriyadan o\'tmadi'
-                : `Ball: ${this.score} / 100 (${this.tier || '—'} daraja)`;
+                ? 'Failed a knockout rule'
+                : `Score ${this.score} of 100 (grade ${this.tier || '—'})`;
         },
     },
 };

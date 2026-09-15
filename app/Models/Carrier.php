@@ -73,7 +73,7 @@ class Carrier extends Model
     }
 
     /**
-     * Carrier tomoni pullik: obuna aktiv bo'lmasa applicant/talent pool yopiq.
+     * Paid side: without an active plan, applicants and the pool are closed.
      */
     public function getHasActiveSubscriptionAttribute(): bool
     {
