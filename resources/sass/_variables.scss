@@ -1,7 +1,17 @@
 // Body
-$body-bg: #f8fafc;
+$body-bg: #f4f6fb;
 
 // Typography
-$font-family-sans-serif: 'Nunito', sans-serif;
-$font-size-base: 0.9rem;
+$font-family-sans-serif: 'Inter', 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+$font-size-base: 0.925rem;
 $line-height-base: 1.6;
+
+// Brand
+$primary: #1f4fd8;
+$success: #17935d;
+$warning: #d98b00;
+$danger: #d33b3b;
+
+$border-radius: 0.6rem;
+$border-radius-sm: 0.4rem;
+$border-radius-lg: 0.9rem;

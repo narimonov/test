@@ -21,7 +21,13 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
+        'phone',
     ];
+
+    public const ROLE_DRIVER   = 'driver';
+    public const ROLE_CARRIER  = 'carrier';
+    public const ROLE_ADMIN    = 'admin';
 
     /**
      * The attributes that should be hidden for serialization.
@@ -31,6 +37,8 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'verification_code',
+        'verification_code_expires_at',
     ];
 
     /**
@@ -39,10 +47,42 @@ class User extends Authenticatable
      * @var array<string, string>
      */
     protected $casts = [
-        'email_verified_at' => 'datetime',
+        'email_verified_at'            => 'datetime',
+        'phone_verified_at'            => 'datetime',
+        'verification_code_expires_at' => 'datetime',
     ];
+
+    protected $appends = ['is_verified'];
     public function clients()
     {
         return $this->hasMany(Client::class);
+    }
+
+    public function carrier()
+    {
+        return $this->hasOne(Carrier::class);
+    }
+
+    public function driverProfile()
+    {
+        return $this->hasOne(DriverProfile::class);
+    }
+
+    /**
+     * Telefon YOKI email tasdiqlansa yetarli.
+     */
+    public function getIsVerifiedAttribute(): bool
+    {
+        return $this->email_verified_at !== null || $this->phone_verified_at !== null;
+    }
+
+    public function isDriver(): bool
+    {
+        return $this->role === self::ROLE_DRIVER;
+    }
+
+    public function isCarrier(): bool
+    {
+        return $this->role === self::ROLE_CARRIER;
     }
 }

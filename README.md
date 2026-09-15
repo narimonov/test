@@ -1,64 +1,137 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400"></a></p>
+# DriverHub — driver recruiting SPA
 
-<p align="center">
-<a href="https://travis-ci.org/laravel/framework"><img src="https://travis-ci.org/laravel/framework.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Indeed uslubidagi ikki tomonlama platforma: **driver** o'zi ro'yxatdan o'tib profil
+to'ldiradi va vakansiyalarga ariza beradi, **carrier (kompaniya)** esa obuna to'lab
+arizachilarni va butun driver bazasini o'z kriteriyalari bo'yicha avtomatik
+ball qo'yilgan holda ko'radi.
 
-## About Laravel
+- **Frontend:** Vue 3 SPA (vue-router + Pinia, Laravel Mix bilan build qilinadi)
+- **Backend:** Laravel API (`routes/api.php`), Sanctum token auth
+- **Saralash:** `config/driver_scoring.php` — kriteriyalar kodda emas, konfiguratsiyada
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Ishga tushirish
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+```bash
+composer install
+npm install
 
-## Learning Laravel
+cp .env.example .env
+php artisan key:generate
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+# SQLite bilan tez boshlash uchun .env da:
+#   DB_CONNECTION=sqlite
+#   DB_DATABASE=/to'liq/yo'l/database/database.sqlite
+touch database/database.sqlite
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 1500 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+php artisan migrate:fresh --seed   # demo ma'lumot bilan
+npm run dev                        # yoki: npm run watch
+php artisan serve
+```
 
-## Laravel Sponsors
+Demo akkauntlar:
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+| Rol | Email | Parol |
+|---|---|---|
+| Kompaniya | `carrier@example.com` | `password` |
+| Driver | `driver@example.com` | `password` |
 
-### Premium Partners
+Testlar: `./vendor/bin/phpunit`
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
+---
 
-## Contributing
+## Kriteriyalarni o'zgartirish
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Barcha saralash mantig'i **`config/driver_scoring.php`** faylida. Kodga tegmasdan
+kriteriya qo'shish/olib tashlash mumkin.
 
-## Code of Conduct
+### 1. Knockout — "bu bo'lsa darrov rad"
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```php
+'knockouts' => [
+    ['key' => 'cdl_class', 'operator' => 'in', 'value' => ['A'], 'reason' => 'CDL Class A emas'],
+    ['key' => 'years_experience', 'operator' => 'gte', 'value' => 1, 'reason' => 'Tajriba 1 yildan kam'],
+],
+```
 
-## Security Vulnerabilities
+Operatorlar: `gte`, `lte`, `gt`, `lt`, `eq`, `neq`, `in`, `not_in`, `is_true`,
+`is_false`, `date_after_today`.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Knockout'ga tushgan driver ball olmaydi va ro'yxat oxirida `RAD` belgisi bilan turadi.
 
-## License
+### 2. Ball beruvchi kriteriyalar
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+```php
+[
+    'key'    => 'accidents_3y',
+    'label'  => 'Oxirgi 3 yildagi avariyalar',
+    'group'  => 'safety',
+    'type'   => 'bands',
+    'weight' => 20,               // nisbiy og'irlik, yig'indisi 100 bo'lishi shart emas
+    'bands'  => [
+        ['max' => 0, 'points' => 100],
+        ['max' => 1, 'points' => 55],
+        ['max' => 2, 'points' => 20],
+        ['points' => 0],
+    ],
+],
+```
+
+Tiplar:
+
+| Tip | Nima uchun | Misol |
+|---|---|---|
+| `bands` | raqamli qiymat (tajriba, avariya soni) | `['min' => 5, 'points' => 100]` |
+| `map` | matnli qiymat | `['us_citizen' => 100, '_default' => 50]` |
+| `boolean` | ha/yo'q | `'true_points' => 0, 'false_points' => 100` |
+| `set` | json massiv (endorsement, equipment) | `'valuable' => ['hazmat' => 40]` |
+
+Yakuniy ball — barcha kriteriyalarning weighted average'i (0–100), keyin
+`tiers` bo'yicha A/B/C/D darajaga ajratiladi.
+
+### 3. Kompaniya va vakansiya darajasidagi override
+
+- Kompaniya UI'dagi **Kriteriyalar** sahifasidan vaznlarni o'zgartiradi →
+  `carriers.scoring_overrides` da saqlanadi.
+- Har bir vakansiya o'z `requirements` json'i bilan knockout'ni yumshatishi mumkin
+  (masalan shu ish uchun 1 yil tajriba yetarli).
+
+Ustunlik tartibi: `config` → carrier override → job override.
+
+---
+
+## API
+
+| Metod | Yo'l | Izoh |
+|---|---|---|
+| POST | `/api/auth/register` | `role`: `driver` yoki `carrier` |
+| POST | `/api/auth/login` · `/api/auth/logout` · GET `/api/auth/me` | Sanctum token |
+| POST | `/api/auth/send-code` · `/api/auth/verify-code` | telefon yoki email tasdiqlash |
+| GET | `/api/scoring/criteria` | UI kriteriyalarni shu yerdan oladi |
+| GET/PUT | `/api/driver/profile` | driver o'z profili + o'z-o'ziga baho |
+| GET | `/api/driver/jobs` | vakansiya qidirish |
+| POST | `/api/driver/jobs/{job}/apply` | ariza (tasdiqlangan akkaunt talab qilinadi) |
+| GET | `/api/driver/applications` | arizalar tarixi (ball ko'rsatilmaydi) |
+| GET | `/api/carrier/dashboard` · `/api/carrier/profile` | kompaniya |
+| POST/DELETE | `/api/carrier/subscription` | obuna |
+| CRUD | `/api/carrier/jobs` | vakansiyalar |
+| GET | `/api/carrier/jobs/{job}/applicants` | **ball bo'yicha saralangan arizachilar** |
+| GET/POST | `/api/carrier/drivers` | **driver bazasi** + qo'lda kiritish |
+| PUT | `/api/carrier/scoring/overrides` | kriteriya vaznlari |
+
+Obuna talab qiladigan yo'llar (`applicants`, `drivers`) obunasiz `402` qaytaradi,
+tasdiqlanmagan akkaunt `403` oladi.
+
+---
+
+## Hali ulanmagan (keyingi bosqich)
+
+Quyidagilar strukturasi tayyor, faqat tashqi xizmat ulanishi kerak:
+
+- **SMS/email yuborish** — hozir tasdiqlash kodi log'ga yoziladi va `APP_DEBUG=true`
+  bo'lganda javobda qaytariladi (`AuthController::issueCode`).
+- **To'lov (Stripe)** — obuna hozir `CarrierController::subscribe` da qo'lda
+  aktivlashtiriladi.
+- **Resume/fayl yuklash** — `driver_profiles.resume_path` maydoni bor, upload yo'q.
+- **CSV import** — `driver_profiles.source` da `csv` qiymati ko'zda tutilgan.

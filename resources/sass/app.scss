@@ -1,8 +1,111 @@
 // Fonts
-@import url('https://fonts.googleapis.com/css?family=Nunito');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 // Variables
 @import 'variables';
 
 // Bootstrap
 @import '~bootstrap/scss/bootstrap';
+
+body {
+    -webkit-font-smoothing: antialiased;
+}
+
+.app-shell {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.navbar-brand {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.card {
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.stat-card {
+    .stat-value {
+        font-size: 1.85rem;
+        font-weight: 700;
+        line-height: 1.1;
+    }
+
+    .stat-label {
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: $gray-600;
+    }
+}
+
+// Score ko'rsatkichi
+.score-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 3rem;
+    height: 2.4rem;
+    padding: 0 0.6rem;
+    border-radius: $border-radius;
+    font-weight: 700;
+    font-size: 1.05rem;
+
+    &.tier-A { background: rgba(23, 147, 93, 0.14); color: darken($success, 8%); }
+    &.tier-B { background: rgba(31, 79, 216, 0.12); color: $primary; }
+    &.tier-C { background: rgba(217, 139, 0, 0.16); color: darken($warning, 5%); }
+    &.tier-D { background: rgba(100, 116, 139, 0.16); color: $gray-700; }
+    &.tier-out { background: rgba(211, 59, 59, 0.13); color: $danger; }
+}
+
+.criteria-bar {
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(15, 23, 42, 0.08);
+    overflow: hidden;
+
+    span {
+        display: block;
+        height: 100%;
+        border-radius: 3px;
+        background: $primary;
+    }
+}
+
+.driver-row {
+    cursor: pointer;
+
+    &:hover {
+        background: rgba(31, 79, 216, 0.04);
+    }
+}
+
+.filter-panel {
+    position: sticky;
+    top: 1rem;
+}
+
+.knockout-tag {
+    display: inline-block;
+    background: rgba(211, 59, 59, 0.1);
+    color: $danger;
+    border-radius: $border-radius-sm;
+    padding: 0.15rem 0.5rem;
+    font-size: 0.78rem;
+    margin: 0 0.25rem 0.25rem 0;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3.5rem 1rem;
+    color: $gray-600;
+}
+
+.hero {
+    background: linear-gradient(135deg, #0f2a6b 0%, #1f4fd8 100%);
+    color: #fff;
+    border-radius: $border-radius-lg;
+}

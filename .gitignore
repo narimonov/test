@@ -13,3 +13,6 @@ npm-debug.log
 yarn-error.log
 /.idea
 /.vscode
+/database/*.sqlite
+/public/js/*.map
+/public/css/*.map
