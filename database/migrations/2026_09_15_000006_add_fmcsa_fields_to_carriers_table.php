@@ -9,13 +9,13 @@ class AddFmcsaFieldsToCarriersTable extends Migration
     public function up()
     {
         Schema::table('carriers', function (Blueprint $table) {
-            // FMCSA'dan kelgan ma'lumot — kompaniya o'zi kiritgan nomga ishonmaymiz.
+            // Straight from FMCSA; we do not trust the name a user types.
             $table->string('fmcsa_legal_name')->nullable()->after('dot_number');
             $table->string('fmcsa_dba_name')->nullable()->after('fmcsa_legal_name');
             $table->string('fmcsa_status')->nullable()->after('fmcsa_dba_name');
             $table->boolean('allowed_to_operate')->default(false)->after('fmcsa_status');
 
-            // Tasdiqlash kodi shu kontaktlarga yuboriladi (foydalanuvchi kiritganiga emas).
+            // The confirmation code goes here, not to anything the user typed.
             $table->string('fmcsa_phone')->nullable()->after('allowed_to_operate');
             $table->string('fmcsa_email')->nullable()->after('fmcsa_phone');
 
@@ -23,13 +23,13 @@ class AddFmcsaFieldsToCarriersTable extends Migration
             $table->timestamp('fmcsa_verified_at')->nullable()->after('fmcsa_checked_at');
             $table->json('fmcsa_snapshot')->nullable()->after('fmcsa_verified_at');
 
-            // Moderatsiya
+            // Moderation
             $table->timestamp('blocked_at')->nullable();
             $table->string('blocked_reason')->nullable();
             $table->timestamp('blacklisted_at')->nullable();
             $table->string('blacklist_reason')->nullable();
-            // Apelyatsiya qabul qilinsa shu sana qo'yiladi — undan oldingi
-            // salbiy review'lar qayta blacklist qilmaydi.
+            // Set when an appeal succeeds; negative reviews before this date
+            // stop counting towards a new blacklist.
             $table->timestamp('blacklist_cleared_at')->nullable();
 
             $table->index('fmcsa_status');

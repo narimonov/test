@@ -5,12 +5,12 @@
 | FMCSA integratsiyasi
 |--------------------------------------------------------------------------
 |
-| Kompaniya ro'yxatdan o'tayotganda MC yoki DOT raqami FMCSA bazasidan
-| tekshiriladi. Tasdiqlash kodi FMCSA'da ro'yxatdan o'tgan telefon/emailga
-| yuboriladi — foydalanuvchi kiritgan kontaktga emas. Shu sababli faqat
-| kompaniyaning haqiqiy egasi ro'yxatdan o'ta oladi.
+| A company signing up is checked against FMCSA by MC or DOT number. The
+| confirmation code goes to the phone or email FMCSA holds for that carrier,
+| never to an address the user typed, so only someone who already controls
+| that contact can open the account.
 |
-| driver=fake => tashqi so'rov yo'q, lokal ishlab chiqish uchun.
+| driver=fake => no outbound request, for local development.
 |
 */
 
@@ -23,21 +23,21 @@ return [
         'web_key'          => env('FMCSA_WEB_KEY'),
         'timeout'          => env('FMCSA_TIMEOUT', 15),
 
-        // Telefon/email QCMobile'da yo'q — Company Census dataset'idan olinadi.
+        // QCMobile carries no contact details; those come from Company Census.
         'census_base_url'  => env('FMCSA_CENSUS_BASE_URL', 'https://data.transportation.gov'),
         'census_dataset'   => env('FMCSA_CENSUS_DATASET'),
         'census_app_token' => env('FMCSA_CENSUS_APP_TOKEN'),
     ],
 
     /*
-    | Kompaniya FMCSA'da ACTIVE bo'lmasa ro'yxatdan o'ta olmaydi.
-    | Test muhitida buni o'chirish uchun false qiling.
+    | A carrier that is not active in FMCSA cannot sign up. Set false to
+    | relax this in a test environment.
     */
     'require_active_status' => env('FMCSA_REQUIRE_ACTIVE', true),
 
     /*
-    | Kompaniya ma'lumotini qayta tekshirish oralig'i (kun).
-    | Authority to'xtatilgan bo'lsa akkaunt ham to'xtatiladi.
+    | How often to re-check a carrier, in days. A lapsed authority closes
+    | the account.
     */
     'recheck_after_days' => env('FMCSA_RECHECK_DAYS', 30),
 ];

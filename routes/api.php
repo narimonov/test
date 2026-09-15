@@ -9,12 +9,15 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\BlacklistAppealController;
 use App\Http\Controllers\Api\CarrierController;
+use App\Http\Controllers\Api\CarrierReputationController;
 use App\Http\Controllers\Api\ConversationController;
 use App\Http\Controllers\Api\DriverDocumentController;
 use App\Http\Controllers\Api\DriverProfileController;
 use App\Http\Controllers\Api\JobPostController;
 use App\Http\Controllers\Api\JobSearchController;
 use App\Http\Controllers\Api\MatchingController;
+use App\Http\Controllers\Api\MvrController;
+use App\Http\Controllers\Api\OnboardingController;
 use App\Http\Controllers\Api\PrivacyController;
 use App\Http\Controllers\Api\RecruitingRequestController;
 use App\Http\Controllers\Api\ReviewController;
@@ -22,11 +25,12 @@ use App\Http\Controllers\Api\ScoringController;
 use App\Http\Controllers\Api\SupportController;
 use App\Http\Controllers\Api\TalentPoolController;
 use App\Http\Controllers\Api\TelegramWebhookController;
+use App\Http\Controllers\Api\TravelController;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| API Routes — SPA shu endpointlar bilan ishlaydi
+| API routes — everything the SPA talks to
 |--------------------------------------------------------------------------
 */
 
@@ -46,14 +50,14 @@ Route::prefix('auth')->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('me', [AuthController::class, 'me']);
 
-        // Driver: o'z telefoni/emaili orqali tasdiqlash.
+        // Drivers verify with their own phone or email.
         Route::post('send-code', [AuthController::class, 'sendCode']);
         Route::post('verify-code', [AuthController::class, 'verifyCode']);
 
         /*
-        | Kompaniya: kod FMCSA'dagi rasmiy kontaktga yuboriladi.
-        | Bu yo'llar carrier.fmcsa middleware'idan tashqarida — aks holda
-        | tasdiqlashning o'zi ham bloklanib qolardi.
+        | Carriers verify with a code sent to their FMCSA contact. These sit
+        | outside the carrier.fmcsa middleware, or verification itself would
+        | be blocked.
         */
         Route::middleware('role:carrier')->prefix('carrier')->group(function () {
             Route::get('channels', [AuthController::class, 'carrierChannels']);
@@ -66,7 +70,7 @@ Route::prefix('auth')->group(function () {
 Route::middleware(['auth:sanctum', 'not.blocked'])->group(function () {
     Route::get('scoring/criteria', [ScoringController::class, 'index']);
 
-    // Blacklist'dagi tomon apelyatsiya berishi uchun bu yo'llar ochiq qoladi.
+    // Left open so a blacklisted party can still appeal.
     Route::get('appeals', [BlacklistAppealController::class, 'index']);
     Route::post('appeals', [BlacklistAppealController::class, 'store']);
 
@@ -90,20 +94,32 @@ Route::middleware(['auth:sanctum', 'not.blocked'])->group(function () {
     /*
     | Carrier <-> driver chat.
     */
+    /*
+    | Onboarding checklist — carriers see everyone they hired, drivers see
+    | their own.
+    */
+    Route::get('onboarding', [OnboardingController::class, 'index']);
+    Route::get('onboarding/{onboarding}', [OnboardingController::class, 'show']);
+    Route::put('onboarding/{onboarding}/steps/{step}', [OnboardingController::class, 'updateStep']);
+
+    // A driver should be able to look a company up before applying.
+    Route::get('carriers/{carrier}/reputation', [CarrierReputationController::class, 'show']);
+    Route::post('carriers/{carrier}/reputation/refresh', [CarrierReputationController::class, 'refresh']);
+
     Route::get('conversations', [ConversationController::class, 'index']);
     Route::get('conversations/{conversation}', [ConversationController::class, 'show']);
     Route::post('conversations/{conversation}/messages', [ConversationController::class, 'storeMessage']);
     Route::get('attachments/{attachment}', [ConversationController::class, 'downloadAttachment']);
 
     /*
-    | Driver tomoni
+    | Driver side
     */
     Route::middleware('role:driver')->prefix('driver')->group(function () {
         Route::get('profile', [DriverProfileController::class, 'show']);
         Route::put('profile', [DriverProfileController::class, 'update']);
         Route::get('applications', [JobSearchController::class, 'applications']);
 
-        // Hujjatlar: CDL va medical card.
+        // CDL and medical card.
         Route::get('documents', [DriverDocumentController::class, 'index']);
         Route::post('documents', [DriverDocumentController::class, 'store']);
         Route::delete('documents/{driverDocument}', [DriverDocumentController::class, 'destroy']);
@@ -111,16 +127,16 @@ Route::middleware(['auth:sanctum', 'not.blocked'])->group(function () {
         Route::get('jobs', [JobSearchController::class, 'index']);
         Route::get('jobs/{jobPost}', [JobSearchController::class, 'show']);
 
-        // Ariza berish: tasdiqlangan va blacklist'da bo'lmagan driver uchun.
+        // Applying needs a verified account that is not blacklisted.
         Route::middleware(['account.verified', 'driver.allowed'])
             ->post('jobs/{jobPost}/apply', [JobSearchController::class, 'apply']);
     });
 
     /*
-    | Kompaniya tomoni
+    | Carrier side
     */
     Route::middleware('role:carrier,admin')->prefix('carrier')->group(function () {
-        // FMCSA tasdig'igacha ko'rinadigan yagona ma'lumot.
+        // The only thing visible before FMCSA verification.
         Route::get('profile', [CarrierController::class, 'show']);
 
         Route::middleware('carrier.fmcsa')->group(function () {
@@ -142,12 +158,30 @@ Route::middleware(['auth:sanctum', 'not.blocked'])->group(function () {
             Route::apiResource('jobs', JobPostController::class)->parameters(['jobs' => 'jobPost']);
 
             /*
-            | Pullik qism: arizachilar va driver bazasi faqat aktiv obuna bilan.
+            | Paid: applicants and the driver pool need an active plan.
             */
             Route::middleware(['account.verified', 'carrier.subscribed'])->group(function () {
                 Route::get('jobs/{jobPost}/applicants', [ApplicantController::class, 'index']);
                 Route::get('jobs/{jobPost}/matches', MatchingController::class);
                 Route::put('applications/{application}/status', [ApplicantController::class, 'updateStatus']);
+
+                /*
+                | Motor vehicle records. Ordering needs the driver's recorded
+                | authorisation; a record pulled recently is reused instead.
+                */
+                Route::get('mvr/rates', [MvrController::class, 'rates']);
+                Route::get('drivers/{driverProfile}/mvr', [MvrController::class, 'index']);
+                Route::get('drivers/{driverProfile}/mvr/quote', [MvrController::class, 'quote']);
+                Route::post('drivers/{driverProfile}/mvr', [MvrController::class, 'store']);
+                Route::post('mvr/{mvrReport}/refresh', [MvrController::class, 'refresh']);
+
+                /*
+                | Getting a hired driver to orientation.
+                */
+                Route::get('travel', [TravelController::class, 'index']);
+                Route::post('travel/search', [TravelController::class, 'search']);
+                Route::post('drivers/{driverProfile}/travel', [TravelController::class, 'book']);
+                Route::post('drivers/{driverProfile}/travel/record', [TravelController::class, 'record']);
 
                 Route::get('drivers', [TalentPoolController::class, 'index']);
                 Route::post('drivers', [TalentPoolController::class, 'store']);
@@ -158,11 +192,11 @@ Route::middleware(['auth:sanctum', 'not.blocked'])->group(function () {
         });
     });
 
-    // Berkitilgan PDF: driver o'zinikini, carrier ariza bergan drivernikini.
+    // The redacted PDF: drivers see their own, carriers see applicants'.
     Route::get('documents/{driverDocument}/pdf', [DriverDocumentController::class, 'download']);
 
     /*
-    | Admin tomoni
+    | Admin side
     */
     Route::middleware('role:admin')->prefix('admin')->group(function () {
         Route::get('overview', AdminOverviewController::class);

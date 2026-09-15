@@ -29,6 +29,11 @@
                         <p class="text-muted small mb-0" style="white-space: pre-line">{{ job.carrier.about }}</p>
                     </div>
 
+                    <div v-if="job.carrier" class="border-top pt-3 mb-4">
+                        <h6>What others say about them</h6>
+                        <CarrierReputation :carrier-id="job.carrier.id" />
+                    </div>
+
                     <div class="border-top pt-3">
                         <label class="form-label">Note to the carrier <span class="text-muted small">(optional)</span></label>
                         <textarea v-model="coverNote" rows="3" class="form-control mb-3"
@@ -50,12 +55,13 @@
 <script>
 import api from '../../api';
 import AlertBox from '../../components/AlertBox.vue';
+import CarrierReputation from '../../components/CarrierReputation.vue';
 import { ROUTE_TYPES, DRIVER_TYPES, labelFor, formatPay } from '../../constants';
 
 export default {
     name: 'DriverJobDetailPage',
 
-    components: { AlertBox },
+    components: { AlertBox, CarrierReputation },
 
     data() {
         return {

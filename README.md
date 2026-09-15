@@ -13,6 +13,10 @@ ball qo'yilgan holda ko'radi.
 - **To'lov:** Stripe / Payme / Click, uchta tarif ($50 / $100 / $500)
 - **Chat:** carrier ↔ driver, PDF va rasm biriktirish bilan
 - **Support:** har sahifada, avval AI javob beradi, keyin Telegram orqali agent
+- **MVR:** SambaSafety, oxirgi 30 kundagi record qayta ishlatiladi
+- **Onboarding:** ishga olingandan first dispatch'gacha 16 qadam (49 CFR bo'yicha)
+- **Aviabilet:** Duffel (Expedia reys bermaydi)
+- **Reputatsiya:** FMCSA safety + Google, MC/DOT bo'yicha
 - **PWA:** telefon/desktopga o'rnatiladi (keyinchalik iOS va Play uchun asos)
 
 > Interfeys va kod izohlari **ingliz tilida** — platforma US bozori uchun.
@@ -132,6 +136,79 @@ keshlanmaydi — eski arizachilar ro'yxati yoki eski obuna holatini ko'rsatish
 hech narsa ko'rsatmaslikdan yomonroq.
 
 iOS va Google Play uchun keyinroq shu PWA'ni o'rash kifoya qiladi.
+
+---
+
+## MVR (driving record)
+
+Provayder — **SambaSafety**: 50 shtat va DC bilan to'g'ridan-to'g'ri ishlaydi,
+violation kodlarini bir xillashtiradi, demo muhitida shtat to'lovisiz sinash
+mumkin. O'z-o'zidan ochiladigan xizmat emas — shartnoma kerak.
+
+Ikki qoida:
+
+1. **Rozilikssiz pull yo'q.** FCRA yozma disclosure va ruxsat, DPPA esa ruxsat
+   etilgan maqsad talab qiladi. Driver rozilik bermagan bo'lsa server 422
+   qaytaradi va sababni tushuntiradi.
+2. **Oxirgi 30 kundagi record qayta ishlatiladi.** Shtatlar har pull uchun pul
+   oladi, bir oylik record esa o'sha record. Qayta ishlatilgani `mvr_report_shares`
+   da yoziladi — kim qachon ko'rgani doim ma'lum.
+
+Narxlar `mvr_state_rates` jadvalidan, u yo'q bo'lsa `config/mvr.php` dagi
+fallback'dan olinadi. Carrier buyurtmadan **oldin** narxni va qayta ishlatish
+mumkinligini ko'radi.
+
+CDL raqami `driver_profiles.cdl_number` da, model uni API javobidan
+**yashiradi** — faqat oxirgi 4 raqam chiqadi (DPPA).
+
+---
+
+## Onboarding
+
+Driver ishga olinishi bilan checklist avtomatik ochiladi. Qadamlar
+`config/onboarding.php` da, ikki track bor:
+
+- **Company driver** — 16 qadam: application (49 CFR 391.21) → CDL/medical
+  tekshiruvi → MVR → PSP → previous employer checks → Clearinghouse query →
+  drug test → DOT physical → DQF (Part 391) → travel → orientation → road test
+  (391.31) → ELD training → truck → payroll → first dispatch
+- **Owner operator** — lease agreement (Part 376), insurance, annual inspection
+  va settlement qo'shiladi
+
+Har bir qadamda **egasi** bor: `driver`, `carrier` yoki `platform`. Driver
+faqat o'zining qadamini yopa oladi, qolganiga 403. Progress faqat **majburiy**
+qadamlarni sanaydi.
+
+Platforma ichidagi ish qadamni avtomatik yopadi: MVR buyurtma qilinsa `mvr`,
+aviabilet band qilinsa `travel` qadami `done` bo'ladi.
+
+---
+
+## Aviabilet
+
+**Duffel**, Expedia emas. Expedia Rapid API faqat mehmonxona tarqatadi —
+reys sotmaydi, shuning uchun bu ish uchun yaramaydi. Duffel'da self-serve
+kirish va test rejimi bor. Amadeus Self-Service — muqobil.
+
+Carrier boshqa joydan olgan biletni ham yozib qo'ya oladi — onboarding uchun
+muhimi driver yetib borishi.
+
+---
+
+## Kompaniya reputatsiyasi
+
+MC/DOT ma'lum bo'lgach yig'iladi:
+
+- **FMCSA safety record** — ochiq va rasmiy. Out-of-service foizlari 0–5 ga
+  o'giriladi, lekin asl raqamlar ham ko'rsatiladi
+- **Google Places** — shartlari ruxsat beradi
+
+**Indeed va Glassdoor qo'shilmadi** — ochiq API yo'q, shartlari esa scraping'ni
+taqiqlaydi. Ular uchun platformani xavf ostiga qo'yish ishonib bo'lmaydigan
+ma'lumot uchun arzimaydi.
+
+Snapshot'lar sana bilan saqlanadi, ustiga yozilmaydi — reyting o'zgarsa
+o'zgarish sifatida ko'rinadi.
 
 ---
 
@@ -323,13 +400,14 @@ Quyidagilar strukturasi tayyor, faqat tashqi xizmat ulanishi kerak:
 - **FMCSA production kaliti** — `FMCSA_WEB_KEY` va census dataset id.
 - **To'lov (Stripe)** — obuna hozir `CarrierController::subscribe` da qo'lda
   aktivlashtiriladi.
-- **MVR** — provayder tanlanishi kerak (SambaSafety'da sandbox bor). Oxirgi
-  30 kun ichidagi MVR qayta ishlatilishi, state bo'yicha narxlar va yangi MVR
-  buyurtma qilish shu integratsiyaga bog'liq. Rozilik allaqachon yig'ilyapti
-  (`users.mvr_consent_at`).
 - **To'lov provayderlari** — Stripe/Payme/Click kodi yozilgan, kalitlar kerak.
 - **Telegram bot** — `TELEGRAM_BOT_TOKEN` va webhook secret kerak; ularsiz
   eskalatsiya admin navbatida qoladi.
+- **SambaSafety shartnomasi** — MVR kodi tayyor, `MVR_DRIVER=sambasafety` va
+  kalitlar qo'yilsa ishlaydi. Shartnomasiz `fake` rejimda to'liq sinaladi.
+- **Duffel akkaunti** — `DUFFEL_TOKEN` kerak.
+- **Google Places kaliti** — `GOOGLE_PLACES_KEY`; bo'lmasa o'rniga
+  development manbai ishlatiladi.
 - **Aviabilet** — Expedia Rapid API faqat mehmonxona beradi, reys bermaydi.
   Duffel yoki Amadeus Self-Service kerak bo'ladi.
 - **Kompaniya reputatsiyasi** — MC/DOT bo'yicha internetdagi sharhlarni yig'ish

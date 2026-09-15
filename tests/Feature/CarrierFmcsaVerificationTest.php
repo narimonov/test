@@ -103,7 +103,7 @@ class CarrierFmcsaVerificationTest extends TestCase
             ->assertStatus(422)
             ->assertJsonValidationErrors('dot_number');
 
-        // Rad etilganda hech narsa saqlanmasligi kerak.
+        // A rejected sign-up must leave nothing behind.
         $this->assertDatabaseCount('users', 0);
     }
 
@@ -139,7 +139,7 @@ class CarrierFmcsaVerificationTest extends TestCase
 
         $this->assertEqualsCanonicalizing(['phone', 'email'], $channels->pluck('channel')->all());
 
-        // To'liq kontakt hech qachon qaytarilmaydi.
+        // The full contact is never returned.
         foreach ($channels as $channel) {
             $this->assertStringContainsString('*', $channel['masked']);
         }

@@ -6,18 +6,17 @@ use Carbon\Carbon;
 use Illuminate\Contracts\Validation\Rule;
 
 /**
- * Driver ko'rsatgan tajriba CDL olingan sanadan ko'p bo'lishi mumkin emas.
+ * Claimed experience cannot exceed the time since the CDL was issued.
  *
- * Misol: CDL 2023-yilda olingan bo'lsa, 2026-yilda 10 yillik tajriba
- * ko'rsatib bo'lmaydi. Kichik farqga yo'l qo'yiladi (tolerance), chunki
- * driver oylarni yaxlitlab yozishi mumkin.
+ * A licence issued in 2023 cannot support ten years of experience in 2026.
+ * A small tolerance is allowed, because drivers round to whole years.
  */
 class ExperienceMatchesCdlIssueDate implements Rule
 {
     /** @var string|null */
     protected $issuedAt;
 
-    /** @var float Necha yilgacha farqqa yo'l qo'yiladi. */
+    /** @var float How much overshoot is tolerated, in years. */
     protected $toleranceYears;
 
     /** @var float */
@@ -38,7 +37,7 @@ class ExperienceMatchesCdlIssueDate implements Rule
         try {
             $issued = Carbon::parse($this->issuedAt);
         } catch (\Exception $e) {
-            return true;   // sana formatini alohida qoida tekshiradi
+            return true;   // a separate rule validates the date format
         }
 
         if ($issued->isFuture()) {
@@ -52,7 +51,7 @@ class ExperienceMatchesCdlIssueDate implements Rule
 
     public function message()
     {
-        return "Ko'rsatilgan tajriba CDL olingan sanaga mos kelmaydi — "
-            . "bu sana bo'yicha eng ko'pi {$this->allowed} yil bo'lishi mumkin.";
+        return 'The experience given does not match the CDL issue date — '
+            . "that date supports at most {$this->allowed} years.";
     }
 }

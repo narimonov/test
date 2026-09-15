@@ -7,6 +7,7 @@ use App\Models\Application;
 use App\Models\Carrier;
 use App\Models\JobPost;
 use App\Services\DriverScoringService;
+use App\Services\OnboardingService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -96,7 +97,7 @@ class ApplicantController extends Controller
         ]);
     }
 
-    public function updateStatus(Request $request, Application $application)
+    public function updateStatus(Request $request, Application $application, OnboardingService $onboarding)
     {
         $carrier = $this->carrierFor($request);
         abort_unless($application->jobPost->carrier_id === $carrier->id, 403, 'This application is not yours.');
@@ -138,6 +139,11 @@ class ApplicantController extends Controller
         }
 
         $driver->save();
+
+        // Hiring starts the onboarding checklist for this carrier.
+        if ($data['status'] === 'hired') {
+            $onboarding->start($driver->fresh(), $carrier, $application);
+        }
 
         return response()->json(['application' => $application->fresh()]);
     }

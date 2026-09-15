@@ -8,15 +8,14 @@ use Illuminate\Support\Facades\Log;
 /**
  * FMCSA QCMobile API (https://mobile.fmcsa.dot.gov/QCDevsite/).
  *
- * QCMobile safety/status ma'lumotini beradi, lekin telefon/email qaytarmaydi.
- * Shuning uchun kontakt ma'lumoti Company Census dataset'idan (DOT Open Data,
- * Socrata) qo'shimcha so'rov bilan olinadi — tasdiqlash kodi o'sha kontaktga
- * yuboriladi.
+ * QCMobile gives safety and status but no contact details, so the phone and
+ * email come from the Company Census dataset on DOT Open Data. The
+ * confirmation code is sent to that contact.
  *
- * Kerakli sozlamalar (.env):
- *   FMCSA_WEB_KEY=...            QCDevsite'da ro'yxatdan o'tib olinadi (bepul)
- *   FMCSA_CENSUS_DATASET=...     data.transportation.gov dagi dataset id
- *   FMCSA_CENSUS_APP_TOKEN=...   ixtiyoriy, rate limit uchun
+ * Required settings (.env):
+ *   FMCSA_WEB_KEY=...            free, from QCDevsite
+ *   FMCSA_CENSUS_DATASET=...     dataset id on data.transportation.gov
+ *   FMCSA_CENSUS_APP_TOKEN=...   optional, raises the rate limit
  */
 class QcMobileFmcsaClient implements FmcsaClient
 {
@@ -74,7 +73,7 @@ class QcMobileFmcsaClient implements FmcsaClient
     }
 
     /**
-     * QCMobile "content" ni ba'zan obyekt, ba'zan massiv qilib qaytaradi.
+     * QCMobile returns "content" as an object sometimes and an array others.
      */
     protected function firstCarrier(?array $payload): ?array
     {
@@ -118,8 +117,8 @@ class QcMobileFmcsaClient implements FmcsaClient
     }
 
     /**
-     * Company Census dataset'idan telefon/email. Topilmasa bo'sh massiv —
-     * bu holda kompaniya qo'lda tekshiruvga tushadi.
+     * Phone and email from the Company Census dataset. An empty array means
+     * the carrier has to go through a manual check.
      */
     protected function lookupContact(string $dotNumber): array
     {

@@ -6,14 +6,14 @@ use App\Models\DriverProfile;
 use Carbon\Carbon;
 
 /**
- * Driverni config/driver_scoring.php dagi kriteriyalar bo'yicha baholaydi.
+ * Scores a driver against the criteria in config/driver_scoring.php.
  *
  * Natija:
  *   [
  *     'score'        => 0..100,
  *     'tier'         => 'A'|'B'|'C'|'D'|null,
  *     'disqualified' => bool,
- *     'knockouts'    => ['CDL Class A emas', ...],
+ *     'knockouts'    => ['Not a Class A CDL', ...],
  *     'breakdown'    => [['key','label','group','value','points','weight','contribution'], ...],
  *   ]
  */
@@ -28,7 +28,7 @@ class DriverScoringService
     }
 
     /**
-     * Carrier yoki job post o'z sozlamalari bilan default config ustidan yozishi mumkin.
+     * A carrier or a job post can override the defaults.
      */
     public function withOverrides(?array $overrides): self
     {
@@ -75,7 +75,7 @@ class DriverScoringService
     }
 
     /**
-     * Ro'yxatni ball bo'yicha tartiblash. Disqualified bo'lganlar oxirida turadi.
+     * Rank a list by score, with disqualified drivers always last.
      *
      * @param  \Illuminate\Support\Collection|DriverProfile[]  $drivers
      */
@@ -100,7 +100,7 @@ class DriverScoringService
         return $scored;
     }
 
-    /** UI kriteriyalarni ko'rsatishi uchun. */
+    /** What the UI needs to display the criteria. */
     public function criteriaSummary(): array
     {
         $totalWeight = array_sum(array_column($this->config['criteria'], 'weight'));
@@ -129,7 +129,7 @@ class DriverScoringService
     }
 
     // ------------------------------------------------------------------
-    // Ichki logika
+    // Internals
     // ------------------------------------------------------------------
 
     protected function extractValues(DriverProfile $driver): array
@@ -266,7 +266,7 @@ class DriverScoringService
         return (string) array_key_last($tiers);
     }
 
-    /** Override qoidalarini 'key' bo'yicha almashtiradi, yangilarini qo'shadi. */
+    /** Replaces rules by key and appends any that are new. */
     protected function mergeRules(array $base, array $overrides, string $matchOn): array
     {
         $indexed = [];
@@ -279,7 +279,7 @@ class DriverScoringService
                 continue;
             }
 
-            // weight = 0 yoki 'disabled' => true bo'lsa qoidani o'chiradi.
+            // 'disabled' => true removes the rule entirely.
             if (! empty($rule['disabled'])) {
                 unset($indexed[$rule[$matchOn]]);
                 continue;

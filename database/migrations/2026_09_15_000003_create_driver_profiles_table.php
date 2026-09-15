@@ -11,12 +11,12 @@ class CreateDriverProfilesTable extends Migration
         Schema::create('driver_profiles', function (Blueprint $table) {
             $table->id();
 
-            // Driver o'zi ro'yxatdan o'tsa user_id bo'ladi; recruiter qo'lda kiritsa null.
+            // Set when the driver signed up; null when a recruiter entered them.
             $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('created_by_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('source')->default('self_signup'); // self_signup | manual | csv | import
 
-            // Shaxsiy
+            // Personal
             $table->string('first_name');
             $table->string('last_name');
             $table->string('email')->nullable();
@@ -34,7 +34,7 @@ class CreateDriverProfilesTable extends Migration
             $table->json('endorsements')->nullable();            // hazmat, tanker, doubles, passenger, twic
             $table->date('medical_card_expires_at')->nullable();
 
-            // Tajriba
+            // Experience
             $table->decimal('years_experience', 4, 1)->default(0);
             $table->json('equipment_experience')->nullable();    // dry_van, reefer, flatbed, tanker, stepdeck, car_hauler
             $table->string('driver_type')->default('company_driver'); // company_driver | owner_operator | lease_purchase
@@ -54,14 +54,14 @@ class CreateDriverProfilesTable extends Migration
             $table->boolean('failed_drug_test_ever')->default(false);
             $table->boolean('can_pass_drug_test')->default(true);
 
-            // Ish sharoiti
+            // Work preferences
             $table->string('work_authorization')->nullable();    // us_citizen | green_card | ead | other
             $table->boolean('willing_to_relocate')->default(false);
             $table->date('available_from')->nullable();
             $table->unsignedInteger('desired_pay_cents')->nullable();
             $table->string('desired_pay_unit')->nullable();      // per_mile | per_week | percentage
 
-            // Qo'shimcha
+            // Extras
             $table->string('resume_path')->nullable();
             $table->text('notes')->nullable();
             $table->string('status')->default('new');            // new | contacted | screening | hired | rejected

@@ -68,6 +68,16 @@
                     </form>
                 </div>
             </div>
+
+            <div v-if="form.id" class="card mt-4">
+                <div class="card-body">
+                    <h6 class="mb-1">How you look from outside</h6>
+                    <p class="text-muted small mb-3">
+                        What a driver sees when they look you up before applying.
+                    </p>
+                    <CarrierReputation :carrier-id="form.id" can-refresh />
+                </div>
+            </div>
         </div>
     </div>
 </template>
@@ -75,13 +85,14 @@
 <script>
 import api from '../../api';
 import AlertBox from '../../components/AlertBox.vue';
+import CarrierReputation from '../../components/CarrierReputation.vue';
 import { US_STATES } from '../../constants';
 import { useAuthStore } from '../../stores/auth';
 
 export default {
     name: 'CarrierCompanyPage',
 
-    components: { AlertBox },
+    components: { AlertBox, CarrierReputation },
 
     setup() {
         return { auth: useAuthStore() };

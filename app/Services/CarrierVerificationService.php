@@ -9,12 +9,12 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Kompaniyani FMCSA bazasi bo'yicha tekshiradi va tasdiqlash kodini
- * FMCSA'da ro'yxatdan o'tgan kontaktga yuboradi.
+ * Checks a company against FMCSA and sends the confirmation code to the
+ * contact FMCSA holds for it.
  *
- * Asosiy g'oya: kod foydalanuvchi kiritgan emailga emas, FMCSA'dagi rasmiy
- * kontaktga ketadi — shuning uchun faqat kompaniyaning haqiqiy egasi
- * ro'yxatdan o'ta oladi.
+ * The point is that the code never goes to an address the user typed. Only
+ * someone who already controls the carrier's registered contact can open the
+ * account.
  */
 class CarrierVerificationService
 {
@@ -27,9 +27,9 @@ class CarrierVerificationService
     }
 
     /**
-     * MC yoki DOT bo'yicha qidiradi va natijani tekshiradi.
+     * Look the carrier up by MC or DOT and check the result.
      *
-     * @throws ValidationException topilmasa yoki faol bo'lmasa
+     * @throws ValidationException when it is not found or not operating
      */
     public function lookup(?string $dotNumber, ?string $mcNumber): CarrierRecord
     {
@@ -45,13 +45,13 @@ class CarrierVerificationService
 
         if (! $record) {
             throw ValidationException::withMessages([
-                'dot_number' => ['Bu MC/DOT raqam FMCSA bazasida topilmadi. Raqamni tekshiring.'],
+                'dot_number' => ['FMCSA has no record of that MC or DOT number. Check the number.'],
             ]);
         }
 
         if (config('fmcsa.require_active_status') && ! $record->isOperational()) {
             throw ValidationException::withMessages([
-                'dot_number' => ['Bu kompaniya FMCSA bo\'yicha faol emas (authority to\'xtatilgan yoki out of service).'],
+                'dot_number' => ['FMCSA shows this carrier is not allowed to operate — the authority is inactive or out of service.'],
             ]);
         }
 
@@ -59,7 +59,7 @@ class CarrierVerificationService
     }
 
     /**
-     * Allaqachon ro'yxatdan o'tgan DOT raqamni ikkinchi marta ochib bo'lmaydi.
+     * A DOT number can only back one account.
      *
      * @throws ValidationException
      */
@@ -73,12 +73,12 @@ class CarrierVerificationService
 
         if ($exists) {
             throw ValidationException::withMessages([
-                'dot_number' => ['Bu DOT raqam bilan akkaunt allaqachon mavjud. Kompaniyangiz admini bilan bog\'laning.'],
+                'dot_number' => ['An account already exists for this DOT number. Ask your company admin for access.'],
             ]);
         }
     }
 
-    /** FMCSA yozuvini carrier modeliga yozadi. */
+    /** Write the FMCSA record onto the carrier. */
     public function applyRecord(Carrier $carrier, CarrierRecord $record): Carrier
     {
         $carrier->forceFill([
@@ -100,7 +100,7 @@ class CarrierVerificationService
     }
 
     /**
-     * Kod yuborish uchun mavjud kanallar — maskalangan holda.
+     * The contacts a code can be sent to, masked.
      *
      * @return array<int, array{channel: string, masked: string}>
      */
@@ -120,10 +120,10 @@ class CarrierVerificationService
     }
 
     /**
-     * Tasdiqlash kodini FMCSA kontaktiga yuboradi.
+     * Send the confirmation code to the FMCSA contact.
      *
-     * SMS/email gateway hali ulanmagan — kod log'ga yoziladi va APP_DEBUG
-     * yoqilganda javobda qaytariladi.
+     * No SMS or email gateway is connected yet: the code is logged, and
+     * returned in the response while APP_DEBUG is on.
      */
     public function issueCode(Carrier $carrier, string $channel): array
     {
@@ -131,7 +131,7 @@ class CarrierVerificationService
 
         if (! $destination) {
             throw ValidationException::withMessages([
-                'channel' => ['FMCSA bazasida bu kanal uchun kontakt yo\'q.'],
+                'channel' => ['FMCSA has no contact on file for that channel.'],
             ]);
         }
 
@@ -160,7 +160,7 @@ class CarrierVerificationService
     }
 
     /**
-     * Kodni tekshiradi. To'g'ri bo'lsa kompaniya to'liq tasdiqlanadi.
+     * Check the code. A correct one fully verifies the company.
      *
      * @throws ValidationException
      */
@@ -173,11 +173,11 @@ class CarrierVerificationService
 
         if ($user->verification_code === null || $expired || ! hash_equals($user->verification_code, $code)) {
             throw ValidationException::withMessages([
-                'code' => ['Kod noto\'g\'ri yoki muddati tugagan.'],
+                'code' => ['That code is wrong or has expired.'],
             ]);
         }
 
-        // Kod eskirgan bo'lishi mumkin — tasdiqlash paytida holat qayta tekshiriladi.
+        // The record may have moved since sign-up, so re-check on confirm.
         $record = $this->lookup($carrier->dot_number, $carrier->mc_number);
         $this->applyRecord($carrier, $record);
 
@@ -193,7 +193,7 @@ class CarrierVerificationService
     }
 
     /**
-     * Davriy qayta tekshiruv: authority to'xtatilgan bo'lsa akkaunt yopiladi.
+     * Periodic re-check: a lapsed authority closes the account.
      */
     public function recheck(Carrier $carrier): Carrier
     {

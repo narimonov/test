@@ -11,6 +11,7 @@ const routes = [
     // Shared by both sides
     { path: '/messages', name: 'conversations', component: () => import('./pages/Conversations.vue'), meta: { auth: true } },
     { path: '/standing', name: 'appeal', component: () => import('./pages/Appeal.vue'), meta: { auth: true } },
+    { path: '/onboarding', name: 'onboarding', component: () => import('./pages/Onboarding.vue'), meta: { auth: true } },
 
     // Driver
     { path: '/driver/jobs', name: 'driver.jobs', component: () => import('./pages/driver/Jobs.vue'), meta: { auth: true, role: 'driver' } },
@@ -29,6 +30,7 @@ const routes = [
     { path: '/carrier/criteria', name: 'carrier.criteria', component: () => import('./pages/carrier/Criteria.vue'), meta: { auth: true, role: 'carrier' } },
     { path: '/carrier/recruiting', name: 'carrier.recruiting', component: () => import('./pages/carrier/Recruiting.vue'), meta: { auth: true, role: 'carrier' } },
     { path: '/carrier/company', name: 'carrier.company', component: () => import('./pages/carrier/Company.vue'), meta: { auth: true, role: 'carrier' } },
+    { path: '/carrier/travel', name: 'carrier.travel', component: () => import('./pages/carrier/Travel.vue'), meta: { auth: true, role: 'carrier' } },
     { path: '/carrier/billing', name: 'carrier.billing', component: () => import('./pages/carrier/Billing.vue'), meta: { auth: true, role: 'carrier' } },
 
     // Admin

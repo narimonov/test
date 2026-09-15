@@ -179,6 +179,9 @@
 
                         <DriverSummary :driver="selected.driver" class="mb-4" />
 
+                        <h6>Motor vehicle record</h6>
+                        <MvrPanel :key="selected.driver.id" :driver-id="selected.driver.id" class="mb-4" />
+
                         <h6>Score breakdown</h6>
                         <ScoreBreakdown :rows="selected.breakdown" :knockouts="selected.knockouts" />
                     </div>
@@ -194,13 +197,14 @@ import AlertBox from '../../components/AlertBox.vue';
 import ScorePill from '../../components/ScorePill.vue';
 import ScoreBreakdown from '../../components/ScoreBreakdown.vue';
 import DriverSummary from '../../components/DriverSummary.vue';
+import MvrPanel from '../../components/MvrPanel.vue';
 import ReviewModal from '../../components/ReviewModal.vue';
 import { APPLICATION_STATUSES } from '../../constants';
 
 export default {
     name: 'CarrierApplicantsPage',
 
-    components: { AlertBox, ScorePill, ScoreBreakdown, DriverSummary, ReviewModal },
+    components: { AlertBox, ScorePill, ScoreBreakdown, DriverSummary, MvrPanel, ReviewModal },
 
     data() {
         return {

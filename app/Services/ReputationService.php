@@ -10,10 +10,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Review'larni hisoblaydi va qoida buzilganda blacklist qo'yadi.
+ * Counts reviews and blacklists whoever crosses the threshold.
  *
- * Qoida ikkala tomon uchun bir xil: kim belgilangan sondan ko'p qoniqarsiz
- * baho to'plasa — driver bo'ladimi, kompaniya bo'ladimi — blacklist'ga tushadi.
+ * The rule is the same for both sides: whoever collects enough unsatisfactory
+ * reviews — driver or carrier — ends up blacklisted.
  */
 class ReputationService
 {
@@ -28,7 +28,7 @@ class ReputationService
     }
 
     /**
-     * Subyekt bo'yicha review statistikasi.
+     * Review statistics for one subject.
      *
      * @param  DriverProfile|Carrier  $subject
      */
@@ -51,7 +51,8 @@ class ReputationService
     }
 
     /**
-     * Yangi review'dan keyin chaqiriladi. Chegara oshsa blacklist qo'yiladi.
+     * Called after a review is published. Blacklists once the threshold is
+     * crossed.
      *
      * @param  DriverProfile|Carrier  $subject
      */
@@ -69,7 +70,7 @@ class ReputationService
 
         $subject->forceFill([
             'blacklisted_at'   => now(),
-            'blacklist_reason' => "{$negative} ta qoniqarsiz baho to'plandi",
+            'blacklist_reason' => "{$negative} unsatisfactory reviews",
         ])->save();
 
         Log::info('Subject blacklisted', [
@@ -81,7 +82,7 @@ class ReputationService
         return true;
     }
 
-    /** Apelyatsiya qabul qilindi — blacklist olinadi va hisob nolga tushadi. */
+    /** Appeal approved: lift the blacklist and reset the count. */
     public function liftBlacklist(Model $subject, string $note = null): Model
     {
         $subject->forceFill([
@@ -93,7 +94,7 @@ class ReputationService
         return $subject->fresh();
     }
 
-    /** Admin qo'lda blacklist qo'yishi ham mumkin. */
+    /** An admin can also blacklist directly. */
     public function blacklist(Model $subject, string $reason): Model
     {
         $subject->forceFill([
@@ -122,8 +123,8 @@ class ReputationService
     }
 
     /**
-     * Apelyatsiyadan oldingi salbiy baholar hisobga olinmaydi — aks holda
-     * blacklist olingan zahoti qaytib qo'yilardi.
+     * Negative reviews from before an appeal do not count, or the account
+     * would be re-listed the moment it was cleared.
      */
     protected function countableReviews(Model $subject, $reviews)
     {

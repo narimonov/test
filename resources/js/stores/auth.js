@@ -30,7 +30,7 @@ export const useAuthStore = defineStore('auth', {
     },
 
     actions: {
-        /** Sahifa yangilanganda tokenni tekshirib, userni tiklaydi. */
+        /** On a page reload, check the stored token and restore the user. */
         async boot() {
             if (this.booted) return;
 

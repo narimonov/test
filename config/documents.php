@@ -2,22 +2,22 @@
 
 /*
 |--------------------------------------------------------------------------
-| Driver hujjatlari (CDL, medical card)
+| Driver documents (CDL, medical card)
 |--------------------------------------------------------------------------
 |
-| Driver hujjatni rasmga olib yuklaydi, maxfiy joylarni belgilaydi. Tizim
-| o'sha joylarni qaytarib bo'lmaydigan qilib berkitadi, watermark qo'yadi
-| va PDF ko'rinishida saqlaydi. Carrier faqat shu PDF'ni ko'radi.
+| A driver photographs the document and marks the sensitive areas. Those
+| areas are destroyed, a watermark is applied, and the result is stored as a
+| PDF. Carriers only ever see that PDF.
 |
 */
 
 return [
 
-    // Asl rasm va PDF hech qachon public papkada turmaydi.
+    // Neither the original nor the PDF ever sits in the public folder.
     'disk' => env('DOCUMENTS_DISK', 'local'),
 
     /*
-    | Watermark matni. Production'ga chiqqanda .env orqali almashtiriladi.
+    | Watermark text. Change it through .env in production.
     */
     'watermark_text' => env('DOCUMENTS_WATERMARK', 'recruiting'),
 
@@ -28,20 +28,21 @@ return [
     ],
 
     /*
-    | Berkitish usuli:
-    |   pixelate — kuchli piksellashtirish (orqaga qaytarib bo'lmaydi)
-    |   blackout — to'liq qora to'rtburchak
+    | How areas are removed:
+    |   pixelate — collapsed and stretched back, irreversible
+    |   blackout — a solid black rectangle
     |
-    | Oddiy "blur" qaytarib tiklanishi mumkin, shuning uchun ishlatilmaydi.
+    | Plain blur is not offered: blurred text can be recovered.
     */
     'redaction_mode' => env('DOCUMENTS_REDACTION', 'pixelate'),
 
-    'max_width'  => 2000,     // px, yuklangan rasm shungacha kichraytiriladi
+    'max_width'  => 2000,     // px; uploads are scaled down to this
     'jpeg_quality' => 82,
     'max_upload_kb' => 12288, // 12 MB
 
     /*
-    | Watermark uchun shrift. Repoda bor, shuning uchun serverga bog'liq emas.
+    | The watermark font ships with the repo, so it does not depend on the
+    | server having one installed.
     */
     'font_path' => resource_path('fonts/DejaVuSans-Bold.ttf'),
 

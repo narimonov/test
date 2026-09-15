@@ -13,13 +13,13 @@ class CreateDriverDocumentsTable extends Migration
             $table->foreignId('driver_profile_id')->constrained()->cascadeOnDelete();
             $table->string('type');                       // cdl | medical_card
 
-            // Asl rasm private diskda, faqat qayta ishlash uchun saqlanadi.
+            // The original stays on the private disk, only to be processed.
             $table->string('original_path')->nullable();
-            // Berkitilgan + watermark qo'yilgan PDF — carrier faqat shuni ko'radi.
+            // The redacted, watermarked PDF — the only thing a carrier sees.
             $table->string('pdf_path')->nullable();
 
             $table->string('watermark_text')->default('recruiting');
-            $table->json('redactions')->nullable();       // [{x,y,w,h}] 0..1 oralig'idagi nisbiy koordinatalar
+            $table->json('redactions')->nullable();       // [{x,y,w,h}] relative, 0..1
             $table->string('status')->default('pending'); // pending | processing | ready | failed
             $table->string('failure_reason')->nullable();
             $table->date('document_expires_at')->nullable();

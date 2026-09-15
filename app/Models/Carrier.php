@@ -31,9 +31,9 @@ class Carrier extends Model
     protected $appends = ['has_active_subscription', 'is_fmcsa_verified', 'is_blocked', 'is_blacklisted'];
 
     /*
-     * FMCSA kontaktlari ichki ma'lumot — API javobiga chiqmaydi.
-     * fmcsa_snapshot ham yashiriladi, chunki uning ichida o'sha telefon va
-     * email xom holda turadi.
+     * The FMCSA contacts are internal and never appear in an API response.
+     * fmcsa_snapshot is hidden too, because it carries the same phone and
+     * email in raw form.
      */
     protected $hidden = ['fmcsa_phone', 'fmcsa_email', 'fmcsa_snapshot'];
 

@@ -21,7 +21,7 @@ class CreateJobPostsTable extends Migration
             $table->unsignedInteger('pay_min_cents')->nullable();
             $table->unsignedInteger('pay_max_cents')->nullable();
             $table->string('pay_unit')->nullable();              // per_mile | per_week | percentage
-            $table->json('requirements')->nullable();            // scoring knockout'larini job darajasida bekor qiladi
+            $table->json('requirements')->nullable();            // overrides knockouts for this job
             $table->boolean('is_open')->default(true);
             $table->timestamps();
         });

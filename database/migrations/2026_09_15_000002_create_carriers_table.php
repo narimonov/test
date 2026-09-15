@@ -23,12 +23,12 @@ class CreateCarriersTable extends Migration
             $table->text('about')->nullable();
             $table->unsignedSmallInteger('fleet_size')->nullable();
 
-            // Billing — carrier tomoni pul to'lab ishlatadi.
+            // Billing — the carrier side is paid.
             $table->string('subscription_plan')->default('free');
             $table->string('subscription_status')->default('inactive');
             $table->timestamp('subscription_expires_at')->nullable();
 
-            // Kompaniyaning o'z scoring sozlamalari (config/driver_scoring.php ustidan yoziladi).
+            // Per-carrier scoring, layered over config/driver_scoring.php.
             $table->json('scoring_overrides')->nullable();
 
             $table->timestamps();

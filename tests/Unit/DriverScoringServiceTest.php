@@ -8,18 +8,18 @@ use Tests\TestCase;
 
 class DriverScoringServiceTest extends TestCase
 {
-    /** Testlar config faylidan mustaqil bo'lishi uchun o'z kichik konfigi bilan ishlaydi. */
+    /** A small config of its own, so the tests do not depend on the real one. */
     protected function config(array $overrides = []): array
     {
         return array_merge([
             'knockouts' => [
-                ['key' => 'cdl_class', 'operator' => 'in', 'value' => ['A'], 'reason' => 'CDL A emas'],
-                ['key' => 'years_experience', 'operator' => 'gte', 'value' => 1, 'reason' => 'Tajriba kam'],
+                ['key' => 'cdl_class', 'operator' => 'in', 'value' => ['A'], 'reason' => 'Not Class A'],
+                ['key' => 'years_experience', 'operator' => 'gte', 'value' => 1, 'reason' => 'Too little experience'],
                 ['key' => 'can_pass_drug_test', 'operator' => 'is_true', 'reason' => 'Drug test'],
             ],
             'criteria' => [
                 [
-                    'key' => 'years_experience', 'label' => 'Tajriba', 'type' => 'bands', 'weight' => 60,
+                    'key' => 'years_experience', 'label' => 'Experience', 'type' => 'bands', 'weight' => 60,
                     'bands' => [
                         ['min' => 5, 'points' => 100],
                         ['min' => 2, 'points' => 60],
@@ -27,7 +27,7 @@ class DriverScoringServiceTest extends TestCase
                     ],
                 ],
                 [
-                    'key' => 'accidents_3y', 'label' => 'Avariya', 'type' => 'bands', 'weight' => 40,
+                    'key' => 'accidents_3y', 'label' => 'Accidents', 'type' => 'bands', 'weight' => 40,
                     'bands' => [
                         ['max' => 0, 'points' => 100],
                         ['max' => 1, 'points' => 50],
@@ -63,7 +63,7 @@ class DriverScoringServiceTest extends TestCase
 
     public function test_it_weights_criteria_proportionally()
     {
-        // Tajriba 100 ball (vazn 60), avariya 50 ball (vazn 40) => (60*100 + 40*50) / 100 = 80
+        // Experience scores 100 at weight 60, accidents 50 at weight 40 => 80
         $result = (new DriverScoringService($this->config()))->score($this->driver(['accidents_3y' => 1]));
 
         $this->assertSame(80, $result['score']);
@@ -79,7 +79,7 @@ class DriverScoringServiceTest extends TestCase
 
         $this->assertTrue($result['disqualified']);
         $this->assertNull($result['tier']);
-        $this->assertEquals(['CDL A emas', 'Drug test'], $result['knockouts']);
+        $this->assertEquals(['Not Class A', 'Drug test'], $result['knockouts']);
     }
 
     public function test_missing_value_does_not_silently_pass_a_knockout()
@@ -90,7 +90,7 @@ class DriverScoringServiceTest extends TestCase
         $result = (new DriverScoringService($this->config()))->score($driver);
 
         $this->assertTrue($result['disqualified']);
-        $this->assertContains('Tajriba kam', $result['knockouts']);
+        $this->assertContains('Too little experience', $result['knockouts']);
     }
 
     public function test_overrides_replace_weights_without_touching_other_rules()
@@ -98,7 +98,7 @@ class DriverScoringServiceTest extends TestCase
         $service = (new DriverScoringService($this->config()))
             ->withOverrides(['criteria' => [['key' => 'years_experience', 'weight' => 0]]]);
 
-        // Tajriba vazni 0 bo'lgach faqat avariya hisoblanadi.
+        // With experience weighted to zero only accidents count.
         $result = $service->score($this->driver(['accidents_3y' => 1]));
 
         $this->assertSame(50, $result['score']);
@@ -108,7 +108,7 @@ class DriverScoringServiceTest extends TestCase
     {
         $service = (new DriverScoringService($this->config()))
             ->withOverrides(['knockouts' => [
-                ['key' => 'cdl_class', 'operator' => 'in', 'value' => ['A', 'B'], 'reason' => 'CDL A/B emas'],
+                ['key' => 'cdl_class', 'operator' => 'in', 'value' => ['A', 'B'], 'reason' => 'Not Class A or B'],
             ]]);
 
         $result = $service->score($this->driver(['cdl_class' => 'B']));
@@ -120,7 +120,7 @@ class DriverScoringServiceTest extends TestCase
     {
         $config = $this->config([
             'criteria' => [[
-                'key' => 'endorsements', 'label' => 'Endorsement', 'type' => 'set', 'weight' => 100,
+                'key' => 'endorsements', 'label' => 'Endorsements', 'type' => 'set', 'weight' => 100,
                 'valuable' => ['hazmat' => 60, 'tanker' => 60], 'max_points' => 100,
             ]],
         ]);

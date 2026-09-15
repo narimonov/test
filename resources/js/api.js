@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 /**
- * API klienti. Sanctum token localStorage'da saqlanadi va har so'rovga
- * Authorization header sifatida qo'shiladi.
+ * API client. The Sanctum token lives in localStorage and is attached to
+ * every request as an Authorization header.
  */
 const api = axios.create({
     baseURL: '/api',
@@ -37,8 +37,8 @@ api.interceptors.request.use((config) => {
 });
 
 /**
- * Validatsiya va ruxsat xatolarini bitta ko'rinishga keltiramiz, shunda
- * har bir sahifa xatolarni bir xil ko'rsatadi.
+ * Normalise validation and permission errors so every page reports them the
+ * same way.
  */
 api.interceptors.response.use(
     (response) => response,
@@ -46,7 +46,7 @@ api.interceptors.response.use(
         const { response } = error;
 
         if (!response) {
-            error.friendly = 'Serverga ulanib bo\'lmadi. Internetni tekshiring.';
+            error.friendly = 'Could not reach the server. Check your connection.';
             return Promise.reject(error);
         }
 
@@ -54,7 +54,7 @@ api.interceptors.response.use(
             setToken(null);
         }
 
-        error.friendly = response.data?.message || 'Kutilmagan xatolik yuz berdi.';
+        error.friendly = response.data?.message || 'Something went wrong.';
         error.errors = response.data?.errors || {};
         error.code = response.data?.code || null;
 

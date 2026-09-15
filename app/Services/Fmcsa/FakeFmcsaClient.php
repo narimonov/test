@@ -3,11 +3,11 @@
 namespace App\Services\Fmcsa;
 
 /**
- * Lokal ishlab chiqish va testlar uchun. FMCSA_DRIVER=fake bo'lganda ishlaydi,
- * hech qanday tashqi so'rov yubormaydi.
+ * Local development and tests. Used when FMCSA_DRIVER=fake; makes no
+ * outbound request.
  *
- * Qoida: DOT raqami 9 bilan boshlansa — nofaol kompaniya, 0 bilan boshlansa —
- * topilmadi. Qolganlari faol.
+ * Convention: a DOT number starting with 9 is inactive, one starting with 0
+ * is not found, anything else is active.
  */
 class FakeFmcsaClient implements FmcsaClient
 {
@@ -43,6 +43,10 @@ class FakeFmcsaClient implements FmcsaClient
 
         $inactive = str_starts_with($number, '9');
 
+        // Deterministic safety figures, so the reputation panel has something
+        // realistic to show without hitting FMCSA.
+        $seed = (int) substr($number, -2);
+
         return CarrierRecord::fromArray([
             'dotNumber'        => $kind === 'dot' ? $number : '1' . $number,
             'docketNumber'     => $kind === 'mc' ? $number : null,
@@ -54,6 +58,14 @@ class FakeFmcsaClient implements FmcsaClient
             'email'            => 'dispatch+' . $number . '@fmcsa-test.example',
             'city'             => 'Chicago',
             'state'            => 'IL',
+            'raw'              => [
+                'dotNumber'      => $number,
+                'safetyRating'   => $inactive ? 'Conditional' : 'Satisfactory',
+                'driverOosRate'  => round(2 + ($seed % 7) * 0.5, 2),
+                'vehicleOosRate' => round(12 + ($seed % 15), 2),
+                'totalDrivers'   => 20 + ($seed % 80),
+                'totalPowerUnits' => 15 + ($seed % 60),
+            ],
         ]);
     }
 }

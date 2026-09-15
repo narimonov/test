@@ -24,7 +24,7 @@ class RecruitingFlowTest extends TestCase
             'role'     => User::ROLE_CARRIER,
         ]);
 
-        // email_verified_at fillable emas (mass assignment bilan tasdiqlab bo'lmaydi).
+        // email_verified_at is not fillable, so it cannot be mass assigned.
         if ($verified) {
             $user->forceFill(['email_verified_at' => now()])->save();
         }
@@ -36,7 +36,7 @@ class RecruitingFlowTest extends TestCase
             'subscription_status'     => $subscribed ? 'active' : 'inactive',
             'subscription_expires_at' => $subscribed ? now()->addMonth() : null,
         ])->forceFill([
-            // FMCSA tekshiruvi alohida test faylida sinaladi.
+            // FMCSA verification has its own test file.
             'fmcsa_verified_at'  => now(),
             'allowed_to_operate' => true,
         ])->save();
@@ -100,7 +100,7 @@ class RecruitingFlowTest extends TestCase
             'privacy_version'       => config('privacy.version'),
         ])->assertCreated();
 
-        // Kompaniya nomi FMCSA'dan olinadi, foydalanuvchidan emas.
+        // The company name comes from FMCSA, not from the user.
         $this->assertDatabaseHas('carriers', ['dot_number' => '1234567']);
     }
 

@@ -9,7 +9,7 @@ class AddHiringFieldsToDriverProfilesTable extends Migration
     public function up()
     {
         Schema::table('driver_profiles', function (Blueprint $table) {
-            // Eksklyuzivlik: bitta kompaniya approve qilsa, boshqasi qila olmaydi.
+            // Exclusivity: once one carrier hires them, no other can.
             $table->foreignId('hired_carrier_id')->nullable()->after('status')
                 ->constrained('carriers')->nullOnDelete();
             $table->timestamp('hired_at')->nullable()->after('hired_carrier_id');

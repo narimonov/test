@@ -43,7 +43,7 @@ class DriverDocumentTest extends TestCase
         return $user;
     }
 
-    /** Haqiqiy JPEG yasaydi — GD bilan qayta ishlanadigan bo'lishi kerak. */
+    /** A real JPEG, since it has to survive GD processing. */
     protected function image(): UploadedFile
     {
         $image = imagecreatetruecolor(800, 500);
@@ -79,10 +79,10 @@ class DriverDocumentTest extends TestCase
         Storage::disk('local')->assertExists($document->pdf_path);
         Storage::disk('local')->assertExists($document->original_path);
 
-        // PDF haqiqiy PDF bo'lishi kerak.
+        // The result has to be a real PDF.
         $this->assertStringStartsWith('%PDF', Storage::disk('local')->get($document->pdf_path));
 
-        // Fayl yo'llari hech qachon javobga chiqmasligi kerak.
+        // File paths must never appear in the response.
         $this->assertArrayNotHasKey('original_path', $response->json('document'));
         $this->assertArrayNotHasKey('pdf_path', $response->json('document'));
     }
@@ -175,7 +175,7 @@ class DriverDocumentTest extends TestCase
         $this->assertDatabaseCount('driver_documents', 1);
     }
 
-    /** Multipart yuklash — JSON javob olish uchun Accept sarlavhasi bilan. */
+    /** Multipart upload, with the Accept header so errors come back as JSON. */
     protected function upload(array $data)
     {
         return $this->post('/api/driver/documents', $data, ['Accept' => 'application/json']);

@@ -2,31 +2,31 @@
 
 /*
 |--------------------------------------------------------------------------
-| Driver Scoring — kriteriyalar konfiguratsiyasi
+| Driver scoring criteria
 |--------------------------------------------------------------------------
 |
-| SIZ KRITERIYALARINGIZNI AYNAN SHU FAYLDA O'ZGARTIRASIZ. Kod tegmaydi.
+| Change the criteria here, not in code.
 |
-| Ikki xil kriteriya bor:
+| Two kinds of rule:
 |
-|  1) knockouts  — "bu bo'lsa darrov rad".  Shart bajarilmasa driver
-|                   disqualified bo'ladi, ball hisoblanmaydi.
-|  2) criteria   — "ball beruvchi". Har biri weight (og'irlik) oladi,
-|                   natija 0..100 oralig'ida weighted average bo'lib chiqadi.
+|   1) knockouts — an outright no. Fail one and the driver is disqualified
+|                  and never scored.
+|   2) criteria  — weighted scoring. Each carries a weight and the result is
+|                  a weighted average between 0 and 100.
 |
-| Knockout operatorlari:
+| Knockout operators:
 |   gte, lte, gt, lt, eq, neq, in, not_in, is_true, is_false,
-|   date_after_today (sana bugundan keyin bo'lishi shart)
+|   date_after_today (the date must be in the future)
 |
-| Criteria tiplari:
-|   bands   — raqamli qiymat uchun pog'onalar. Har band ['min'=>,'max'=>,'points'=>]
-|             (min/max ixtiyoriy, birinchi mos kelgan band ishlaydi)
-|   map     — qiymat => ball ('_default' => ball fallback sifatida)
+| Criteria types:
+|   bands   — steps over a number. Each band is ['min'=>,'max'=>,'points'=>]
+|             (min/max optional; the first matching band wins)
+|   map     — value => points ('_default' as the fallback)
 |   boolean — true_points / false_points
-|   set     — json massiv (endorsements, equipment). Har mos kelgani uchun ball,
-|             'points_per_match' va 'max_points' bilan cheklanadi.
+|   set     — a json array (endorsements, equipment). Points per match, capped
+|             by 'max_points'.
 |
-| Qiymat null bo'lsa 'null_points' ishlatiladi (default 0).
+| A null value scores 'null_points' (0 unless set).
 |
 */
 
@@ -34,146 +34,146 @@ return [
 
     /*
     |----------------------------------------------------------------------
-    | 1. KNOCKOUT — darrov rad qilinadigan shartlar
+    | 1. Knockouts — an outright no
     |----------------------------------------------------------------------
-    | Job post o'zining requirements'i bilan bularni bekor qila oladi
-    | (masalan bitta vakansiya uchun 1 yil tajriba yetarli bo'lsa).
+    | A job post can override these for itself, e.g. when one job is happy
+    | with a year of experience.
     */
     'knockouts' => [
         [
             'key'      => 'cdl_class',
             'operator' => 'in',
             'value'    => ['A'],
-            'reason'   => 'CDL Class A emas',
+            'reason'   => 'Not a Class A CDL',
         ],
         [
             'key'      => 'years_experience',
             'operator' => 'gte',
             'value'    => 1,
-            'reason'   => 'Tajriba 1 yildan kam',
+            'reason'   => 'Less than a year of experience',
         ],
         [
             'key'      => 'can_pass_drug_test',
             'operator' => 'is_true',
-            'reason'   => 'Drug test topshira olmaydi',
+            'reason'   => 'Cannot pass a drug test',
         ],
         [
             'key'      => 'license_suspended_ever',
             'operator' => 'is_false',
-            'reason'   => 'Litsenziya to\'xtatilgan (suspension) bo\'lgan',
+            'reason'   => 'Licence has been suspended',
         ],
         [
             'key'      => 'sap_status',
             'operator' => 'not_in',
             'value'    => ['in_program'],
-            'reason'   => 'SAP dasturini tugatmagan',
+            'reason'   => 'Has not completed the SAP program',
         ],
         [
             'key'      => 'cdl_expires_at',
             'operator' => 'date_after_today',
-            'reason'   => 'CDL muddati tugagan',
+            'reason'   => 'CDL has expired',
         ],
     ],
 
     /*
     |----------------------------------------------------------------------
-    | 2. BALL BERUVCHI KRITERIYALAR
+    | 2. Weighted criteria
     |----------------------------------------------------------------------
-    | weight — nisbiy og'irlik. Yig'indisi 100 bo'lishi shart emas,
-    | tizim o'zi normalize qiladi.
+    | Weights are relative; they do not have to add up to 100 — the service
+    | normalises them.
     */
     'criteria' => [
 
         [
             'key'    => 'years_experience',
-            'label'  => 'Tajriba (yil)',
+            'label'  => 'Experience (years)',
             'group'  => 'experience',
             'type'   => 'bands',
             'weight' => 25,
             'bands'  => [
-                ['min' => 5,   'points' => 100, 'label' => '5+ yil'],
-                ['min' => 3,   'points' => 85,  'label' => '3–5 yil'],
-                ['min' => 2,   'points' => 70,  'label' => '2–3 yil'],
-                ['min' => 1,   'points' => 45,  'label' => '1–2 yil'],
-                ['min' => 0,   'points' => 0,   'label' => '1 yildan kam'],
+                ['min' => 5,   'points' => 100, 'label' => '5+ years'],
+                ['min' => 3,   'points' => 85,  'label' => '3-5 years'],
+                ['min' => 2,   'points' => 70,  'label' => '2-3 years'],
+                ['min' => 1,   'points' => 45,  'label' => '1-2 years'],
+                ['min' => 0,   'points' => 0,   'label' => 'Under a year'],
             ],
         ],
 
         [
             'key'    => 'accidents_3y',
-            'label'  => 'Oxirgi 3 yildagi avariyalar',
+            'label'  => 'Accidents in the last 3 years',
             'group'  => 'safety',
             'type'   => 'bands',
             'weight' => 20,
             'bands'  => [
-                ['max' => 0, 'points' => 100, 'label' => 'Yo\'q'],
-                ['max' => 1, 'points' => 55,  'label' => '1 ta'],
-                ['max' => 2, 'points' => 20,  'label' => '2 ta'],
-                ['points' => 0, 'label' => '3+ ta'],
+                ['max' => 0, 'points' => 100, 'label' => 'None'],
+                ['max' => 1, 'points' => 55,  'label' => 'One'],
+                ['max' => 2, 'points' => 20,  'label' => 'Two'],
+                ['points' => 0, 'label' => 'Three or more'],
             ],
         ],
 
         [
             'key'    => 'moving_violations_3y',
-            'label'  => 'Oxirgi 3 yildagi moving violation',
+            'label'  => 'Moving violations in the last 3 years',
             'group'  => 'safety',
             'type'   => 'bands',
             'weight' => 12,
             'bands'  => [
-                ['max' => 0, 'points' => 100, 'label' => 'Yo\'q'],
-                ['max' => 1, 'points' => 75,  'label' => '1 ta'],
-                ['max' => 2, 'points' => 45,  'label' => '2 ta'],
-                ['max' => 3, 'points' => 15,  'label' => '3 ta'],
-                ['points' => 0, 'label' => '4+ ta'],
+                ['max' => 0, 'points' => 100, 'label' => 'None'],
+                ['max' => 1, 'points' => 75,  'label' => 'One'],
+                ['max' => 2, 'points' => 45,  'label' => 'Two'],
+                ['max' => 3, 'points' => 15,  'label' => 'Three'],
+                ['points' => 0, 'label' => 'Four or more'],
             ],
         ],
 
         [
             'key'    => 'jobs_last_3_years',
-            'label'  => 'Job hopping (3 yilda nechta ish)',
+            'label'  => 'Job hopping (jobs in 3 years)',
             'group'  => 'stability',
             'type'   => 'bands',
             'weight' => 15,
             'bands'  => [
-                ['max' => 1, 'points' => 100, 'label' => '1 ta'],
-                ['max' => 2, 'points' => 85,  'label' => '2 ta'],
-                ['max' => 3, 'points' => 60,  'label' => '3 ta'],
-                ['max' => 4, 'points' => 30,  'label' => '4 ta'],
-                ['points' => 0, 'label' => '5+ ta'],
+                ['max' => 1, 'points' => 100, 'label' => 'One'],
+                ['max' => 2, 'points' => 85,  'label' => 'Two'],
+                ['max' => 3, 'points' => 60,  'label' => 'Three'],
+                ['max' => 4, 'points' => 30,  'label' => 'Four'],
+                ['points' => 0, 'label' => 'Five or more'],
             ],
         ],
 
         [
             'key'    => 'longest_tenure_months',
-            'label'  => 'Eng uzun ish staji (oy)',
+            'label'  => 'Longest tenure (months)',
             'group'  => 'stability',
             'type'   => 'bands',
             'weight' => 8,
             'bands'  => [
-                ['min' => 24, 'points' => 100, 'label' => '2+ yil'],
-                ['min' => 12, 'points' => 75,  'label' => '1–2 yil'],
-                ['min' => 6,  'points' => 45,  'label' => '6–12 oy'],
-                ['points' => 15, 'label' => '6 oydan kam'],
+                ['min' => 24, 'points' => 100, 'label' => '2+ years'],
+                ['min' => 12, 'points' => 75,  'label' => '1-2 years'],
+                ['min' => 6,  'points' => 45,  'label' => '6-12 months'],
+                ['points' => 15, 'label' => 'Under 6 months'],
             ],
         ],
 
         [
             'key'    => 'unemployment_gap_months',
-            'label'  => 'Ishsiz yurgan davr (oy)',
+            'label'  => 'Unemployment gap (months)',
             'group'  => 'stability',
             'type'   => 'bands',
             'weight' => 6,
             'bands'  => [
-                ['max' => 1, 'points' => 100, 'label' => 'Yo\'q'],
-                ['max' => 3, 'points' => 70,  'label' => '1–3 oy'],
-                ['max' => 6, 'points' => 40,  'label' => '3–6 oy'],
-                ['points' => 10, 'label' => '6+ oy'],
+                ['max' => 1, 'points' => 100, 'label' => 'None'],
+                ['max' => 3, 'points' => 70,  'label' => '1-3 months'],
+                ['max' => 6, 'points' => 40,  'label' => '3-6 months'],
+                ['points' => 10, 'label' => '6+ months'],
             ],
         ],
 
         [
             'key'              => 'endorsements',
-            'label'            => 'Endorsement\'lar',
+            'label'            => 'Endorsements',
             'group'            => 'qualification',
             'type'             => 'set',
             'weight'           => 8,
@@ -183,7 +183,7 @@ return [
 
         [
             'key'        => 'equipment_experience',
-            'label'      => 'Equipment tajribasi',
+            'label'      => 'Equipment experience',
             'group'      => 'qualification',
             'type'       => 'set',
             'weight'     => 6,
@@ -193,7 +193,7 @@ return [
 
         [
             'key'    => 'sap_status',
-            'label'  => 'SAP holati',
+            'label'  => 'SAP status',
             'group'  => 'safety',
             'type'   => 'map',
             'weight' => 5,
@@ -207,7 +207,7 @@ return [
 
         [
             'key'          => 'dui_ever',
-            'label'        => 'DUI bo\'lganmi',
+            'label'        => 'Has a DUI',
             'group'        => 'safety',
             'type'         => 'boolean',
             'weight'       => 10,
@@ -217,7 +217,7 @@ return [
 
         [
             'key'    => 'work_authorization',
-            'label'  => 'Ishlash huquqi',
+            'label'  => 'Work authorisation',
             'group'  => 'eligibility',
             'type'   => 'map',
             'weight' => 5,
@@ -234,13 +234,13 @@ return [
 
     /*
     |----------------------------------------------------------------------
-    | 3. TIER — ballga qarab darajaga ajratish
+    | 3. Grades
     |----------------------------------------------------------------------
     */
     'tiers' => [
-        'A' => 85,   // 85+  -> darrov qo'ng'iroq qilinadigan
-        'B' => 70,   // 70–84
-        'C' => 50,   // 50–69
-        'D' => 0,    // 50 dan past
+        'A' => 85,   // 85+  call these first
+        'B' => 70,   // 70-84
+        'C' => 50,   // 50-69
+        'D' => 0,    // below 50
     ],
 ];

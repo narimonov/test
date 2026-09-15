@@ -3,7 +3,7 @@
 namespace App\Services\Fmcsa;
 
 /**
- * FMCSA'dan qaytgan kompaniya yozuvi — provayderdan qat'i nazar bir xil shakl.
+ * One carrier record from FMCSA, in the same shape whichever client returned it.
  */
 class CarrierRecord
 {
@@ -43,7 +43,7 @@ class CarrierRecord
         return $this->allowedToOperate && strtoupper((string) $this->statusCode) !== 'I';
     }
 
-    /** Kod yuborish uchun hech bo'lmasa bitta kontakt bo'lishi shart. */
+    /** A code needs at least one contact to go to. */
     public function hasContact(): bool
     {
         return ! empty($this->phone) || ! empty($this->email);
@@ -51,7 +51,7 @@ class CarrierRecord
 
     public function displayName(): string
     {
-        return $this->dbaName ?: ($this->legalName ?: 'Noma\'lum kompaniya');
+        return $this->dbaName ?: ($this->legalName ?: 'Unknown carrier');
     }
 
     public function toArray(): array
@@ -70,7 +70,7 @@ class CarrierRecord
         ];
     }
 
-    /** Kontaktni maskalash — foydalanuvchiga to'liq raqam ko'rsatilmaydi. */
+    /** Mask a contact; the full value is never shown to the user. */
     public static function mask(?string $value, bool $isEmail = false): ?string
     {
         if (! $value) {

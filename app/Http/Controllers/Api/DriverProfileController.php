@@ -57,6 +57,7 @@ class DriverProfileController extends Controller
 
             'cdl_class'                => ['nullable', 'in:A,B,C'],
             'cdl_state'                => ['nullable', 'string', 'size:2'],
+            'cdl_number'               => ['nullable', 'string', 'max:40'],
             'cdl_issued_at'            => ['nullable', 'date'],
             'cdl_expires_at'           => ['nullable', 'date'],
             'endorsements'             => ['nullable', 'array'],

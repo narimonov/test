@@ -45,8 +45,8 @@
 /**
  * Rasm ustida berkitiladigan to'rtburchaklarni chizish.
  *
- * Koordinatalar rasm o'lchamiga nisbatan 0..1 oralig'ida saqlanadi, shuning
- * uchun ekran o'lchami yoki zoom natijaga ta'sir qilmaydi.
+ * Coordinates are stored relative to the image, between 0 and 1, so screen
+ * size and zoom do not affect the result.
  */
 export default {
     name: 'RedactionCanvas',
@@ -72,7 +72,7 @@ export default {
     },
 
     methods: {
-        /** Hodisadan rasmga nisbatan 0..1 koordinatani oladi. */
+        /** Turn an event into a 0..1 coordinate on the image. */
         point(event) {
             const rect = this.$refs.image.getBoundingClientRect();
             const source = event.touches ? event.touches[0] : event;
@@ -104,7 +104,7 @@ export default {
         finish() {
             if (!this.draft) return;
 
-            // Tasodifiy bosishlarni belgilash deb hisoblamaymiz.
+            // Ignore stray clicks.
             if (this.draft.w > 0.01 && this.draft.h > 0.01) {
                 this.$emit('update:modelValue', [...this.boxes, this.rounded(this.draft)]);
             }

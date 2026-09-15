@@ -160,6 +160,14 @@ class DriverHubSeeder extends Seeder
             'privacy_version'     => config('privacy.version'),
         ])->save();
 
+        // Per-state MVR pricing, so the quote screen has real numbers.
+        foreach (config('mvr.fallback_rates') as $state => $cents) {
+            \App\Models\MvrStateRate::updateOrCreate(
+                ['provider' => config('mvr.driver'), 'state' => $state],
+                ['cost_cents' => $cents, 'turnaround' => 'instant', 'synced_at' => now()]
+            );
+        }
+
         $this->command->info('Demo accounts:');
         $this->command->info('  Admin:    admin@admin.com / Admin@1404');
         $this->command->info('  Carrier:  carrier@example.com / password');
@@ -173,7 +181,7 @@ class DriverHubSeeder extends Seeder
                 'first_name' => 'Jasur', 'last_name' => 'Tashkentov',
                 'email' => 'driver@example.com', 'phone' => '+15552220002',
                 'city' => 'Chicago', 'state' => 'IL', 'zip' => '60616',
-                'cdl_class' => 'A', 'cdl_state' => 'IL', 'cdl_expires_at' => now()->addYears(3),
+                'cdl_class' => 'A', 'cdl_state' => 'IL', 'cdl_number' => 'T52188349901', 'cdl_expires_at' => now()->addYears(3),
                 'endorsements' => ['hazmat', 'tanker'], 'equipment_experience' => ['dry_van', 'reefer'],
                 'years_experience' => 6.5, 'driver_type' => 'company_driver', 'preferred_route' => 'otr',
                 'jobs_last_3_years' => 1, 'longest_tenure_months' => 48, 'unemployment_gap_months' => 0,
@@ -184,7 +192,7 @@ class DriverHubSeeder extends Seeder
                 'first_name' => 'Michael', 'last_name' => 'Reyes',
                 'email' => 'm.reyes@example.com', 'phone' => '+15553330003',
                 'city' => 'Indianapolis', 'state' => 'IN',
-                'cdl_class' => 'A', 'cdl_state' => 'IN', 'cdl_expires_at' => now()->addYears(2),
+                'cdl_class' => 'A', 'cdl_state' => 'IN', 'cdl_number' => 'R44120983311', 'cdl_expires_at' => now()->addYears(2),
                 'endorsements' => ['doubles'], 'equipment_experience' => ['dry_van', 'flatbed'],
                 'years_experience' => 3.0, 'driver_type' => 'company_driver', 'preferred_route' => 'regional',
                 'jobs_last_3_years' => 3, 'longest_tenure_months' => 18, 'unemployment_gap_months' => 2,
@@ -195,7 +203,7 @@ class DriverHubSeeder extends Seeder
                 'first_name' => 'Dilshod', 'last_name' => 'Karimov',
                 'email' => 'd.karimov@example.com', 'phone' => '+15554440004',
                 'city' => 'Milwaukee', 'state' => 'WI',
-                'cdl_class' => 'A', 'cdl_state' => 'WI', 'cdl_expires_at' => now()->addYears(4),
+                'cdl_class' => 'A', 'cdl_state' => 'WI', 'cdl_number' => 'K99231847722', 'cdl_expires_at' => now()->addYears(4),
                 'endorsements' => ['hazmat', 'tanker', 'twic'], 'equipment_experience' => ['tanker', 'reefer'],
                 'years_experience' => 9.0, 'driver_type' => 'owner_operator', 'preferred_route' => 'otr',
                 'jobs_last_3_years' => 2, 'longest_tenure_months' => 36, 'unemployment_gap_months' => 1,
@@ -217,7 +225,7 @@ class DriverHubSeeder extends Seeder
                 'first_name' => 'Anvar', 'last_name' => 'Yusupov',
                 'email' => 'a.yusupov@example.com', 'phone' => '+15556660006',
                 'city' => 'Columbus', 'state' => 'OH',
-                'cdl_class' => 'A', 'cdl_state' => 'OH', 'cdl_expires_at' => now()->addYears(2),
+                'cdl_class' => 'A', 'cdl_state' => 'OH', 'cdl_number' => 'Y33019928844', 'cdl_expires_at' => now()->addYears(2),
                 'endorsements' => ['hazmat'], 'equipment_experience' => ['flatbed', 'stepdeck'],
                 'years_experience' => 4.0, 'driver_type' => 'company_driver', 'preferred_route' => 'regional',
                 'jobs_last_3_years' => 2, 'longest_tenure_months' => 26, 'unemployment_gap_months' => 0,

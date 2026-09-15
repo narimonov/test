@@ -6,15 +6,15 @@ use FPDF;
 use RuntimeException;
 
 /**
- * Hujjat rasmini qayta ishlaydi:
- *   1. EXIF bo'yicha to'g'ri burchakka buradi va kichraytiradi
- *   2. Belgilangan joylarni qaytarib bo'lmaydigan qilib berkitadi
- *   3. Watermark qo'yadi
- *   4. PDF qilib o'raydi
+ * Turns a photographed document into a shareable PDF:
+ *   1. rotates by EXIF and scales down
+ *   2. destroys the marked areas
+ *   3. burns in a watermark
+ *   4. wraps the result in a PDF
  *
- * Berkitish uchun oddiy blur ishlatilmaydi — blur qilingan matnni tiklash
- * mumkin. O'rniga katta blokli piksellashtirish yoki to'liq qora to'rtburchak
- * ishlatiladi (config/documents.php dagi redaction_mode).
+ * Plain blur is not used — blurred text can be recovered. Instead the area is
+ * collapsed to a handful of pixels and stretched back, or blacked out
+ * entirely (redaction_mode in config/documents.php).
  */
 class DocumentRedactionService
 {
@@ -27,9 +27,9 @@ class DocumentRedactionService
     }
 
     /**
-     * @param  string  $sourcePath    asl rasm (absolute path)
-     * @param  string  $targetPdfPath yaratiladigan PDF (absolute path)
-     * @param  array   $redactions    [['x'=>0.1,'y'=>0.2,'w'=>0.3,'h'=>0.1], ...] 0..1
+     * @param  string  $sourcePath     the original image, absolute path
+     * @param  string  $targetPdfPath  where the PDF is written, absolute path
+     * @param  array   $redactions     [['x'=>0.1,'y'=>0.2,'w'=>0.3,'h'=>0.1], ...] in 0..1
      */
     public function process(string $sourcePath, string $targetPdfPath, array $redactions = [], string $watermarkText = null): array
     {
@@ -63,13 +63,13 @@ class DocumentRedactionService
     protected function load(string $path)
     {
         if (! is_file($path)) {
-            throw new RuntimeException("Fayl topilmadi: {$path}");
+            throw new RuntimeException("File not found: {$path}");
         }
 
         $info = @getimagesize($path);
 
         if (! $info) {
-            throw new RuntimeException('Fayl rasm emas yoki buzilgan.');
+            throw new RuntimeException('That file is not an image, or it is corrupt.');
         }
 
         switch ($info[2]) {
@@ -77,17 +77,17 @@ class DocumentRedactionService
             case IMAGETYPE_PNG:  $image = imagecreatefrompng($path); break;
             case IMAGETYPE_WEBP: $image = imagecreatefromwebp($path); break;
             default:
-                throw new RuntimeException('Faqat JPG, PNG va WEBP qabul qilinadi.');
+                throw new RuntimeException('Only JPG, PNG and WEBP are accepted.');
         }
 
         if (! $image) {
-            throw new RuntimeException('Rasmni ochib bo\'lmadi.');
+            throw new RuntimeException('The image could not be opened.');
         }
 
         return $this->autoOrient($image, $path, $info[2]);
     }
 
-    /** Telefonda olingan rasm EXIF burchagi bilan keladi — to'g'rilaymiz. */
+    /** Phone photos carry an EXIF orientation; straighten it. */
     protected function autoOrient($image, string $path, int $type)
     {
         if ($type !== IMAGETYPE_JPEG || ! function_exists('exif_read_data')) {
@@ -130,8 +130,8 @@ class DocumentRedactionService
     }
 
     /**
-     * Bitta sohani berkitadi. Koordinatalar 0..1 oralig'ida (rasm o'lchamiga
-     * nisbatan), shuning uchun frontend qanday masshtabda ko'rsatgani muhim emas.
+     * Destroys one area. Coordinates are relative to the image, so whatever
+     * scale the frontend displayed at does not matter.
      */
     protected function redact($image, array $box, int $width, int $height): void
     {
@@ -153,8 +153,8 @@ class DocumentRedactionService
             return;
         }
 
-        // Sohani ajratib olamiz, juda kichik o'lchamga siqamiz va qaytarib
-        // cho'zamiz — bu asl piksellarni butunlay yo'qotadi.
+        // Squeeze the area down to a few pixels and stretch it back: the
+        // original pixels are gone, not merely smeared.
         $blocks = max(3, (int) floor(min($w, $h) / 12));
         $tiny = imagecreatetruecolor($blocks, max(2, (int) round($blocks * $h / $w)));
 
@@ -163,7 +163,7 @@ class DocumentRedactionService
         $patch = imagecreatetruecolor($w, $h);
         imagecopyresized($patch, $tiny, 0, 0, 0, 0, $w, $h, imagesx($tiny), imagesy($tiny));
 
-        // Blok chegaralarini yumshatamiz, lekin ma'lumot allaqachon yo'qolgan.
+        // Soften the block edges; the information is already gone.
         for ($i = 0; $i < 3; $i++) {
             imagefilter($patch, IMG_FILTER_GAUSSIAN_BLUR);
         }
@@ -173,13 +173,13 @@ class DocumentRedactionService
         imagedestroy($tiny);
         imagedestroy($patch);
 
-        // Berkitilgani ko'rinib tursin.
+        // Make it obvious something was removed.
         imagerectangle($image, $x, $y, $x + $w, $y + $h, imagecolorallocate($image, 40, 40, 40));
     }
 
     /**
-     * Butun rasm bo'ylab takrorlanuvchi qiya watermark.
-     * Rasmning o'ziga yoziladi, shuning uchun PDF'dan olib tashlab bo'lmaydi.
+     * A tiled diagonal watermark, burned into the image itself so it cannot
+     * be lifted out of the PDF.
      */
     protected function watermark($image, string $text): void
     {
@@ -205,7 +205,7 @@ class DocumentRedactionService
                 if ($useTtf) {
                     imagettftext($layer, $fontSize, $settings['angle'], $x, $y, $white, $font, $text);
                 } else {
-                    // TTF yo'q bo'lsa ham watermark qo'yiladi (burchaksiz).
+                    // Without a TTF we still watermark, just without rotation.
                     imagestring($layer, 5, $x, $y, $text, $white);
                 }
             }
@@ -217,7 +217,7 @@ class DocumentRedactionService
 
     protected function toPdf(string $jpegPath, string $targetPath, int $width, int $height): void
     {
-        // A4 ichiga sig'diramiz, nisbatni saqlagan holda.
+        // Fit inside A4, keeping the aspect ratio.
         $pageWidth = 210;
         $pageHeight = 297;
         $margin = 10;

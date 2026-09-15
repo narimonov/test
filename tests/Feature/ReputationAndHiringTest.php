@@ -404,8 +404,8 @@ class ReputationAndHiringTest extends TestCase
         }
         $this->assertTrue($driver->fresh()->is_blacklisted);
 
-        // Blacklist boshqa instansiyada qo'yilgan — foydalanuvchini qayta yuklaymiz
-        // (haqiqiy so'rovda user har safar tokendan yangidan o'qiladi).
+        // The blacklist was set on another instance; reload the user, as a
+        // real request would.
         Sanctum::actingAs($driverUser->fresh());
         $this->postJson('/api/appeals', ['reason' => str_repeat('a', 30)])->assertCreated();
 

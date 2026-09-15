@@ -13,10 +13,11 @@ class DriverProfile extends Model
     protected $guarded = ['id'];
 
     /**
-     * Migratsiyadagi default qiymatlar.
+     * The defaults the migration sets.
      *
-     * Bularsiz yangi yaratilgan (hali bazadan qayta o'qilmagan) model
-     * scoring'ga null qiymatlar bilan tushadi va noto'g'ri knockout beradi.
+     * Without these a freshly created model — not yet read back from the
+     * database — reaches scoring with nulls and trips knockout rules that
+     * should not fire.
      */
     protected $attributes = [
         'source'                   => 'self_signup',
@@ -48,8 +49,8 @@ class DriverProfile extends Model
         'can_pass_drug_test'       => 'boolean',
         'willing_to_relocate'      => 'boolean',
         'is_searchable'            => 'boolean',
-        // Y-m-d formati <input type="date"> kutgan formatga to'g'ri keladi;
-        // to'liq ISO sana bilan brauzer maydonni bo'sh ko'rsatadi.
+        // Y-m-d is what <input type="date"> expects; a full ISO timestamp
+        // leaves the field blank in the browser.
         'date_of_birth'            => 'date:Y-m-d',
         'cdl_issued_at'            => 'date:Y-m-d',
         'cdl_expires_at'           => 'date:Y-m-d',
@@ -60,7 +61,13 @@ class DriverProfile extends Model
         'blacklisted_at'           => 'datetime',
     ];
 
-    protected $appends = ['full_name', 'is_hired', 'is_blacklisted'];
+    protected $appends = ['full_name', 'is_hired', 'is_blacklisted', 'cdl_number_last4'];
+
+    /*
+     * The licence number is DPPA-protected personal information. It never
+     * leaves the server in full — only the last four digits are exposed.
+     */
+    protected $hidden = ['cdl_number'];
 
     public function user()
     {
@@ -108,8 +115,23 @@ class DriverProfile extends Model
         return trim($this->first_name . ' ' . $this->last_name);
     }
 
+    public function getCdlNumberLast4Attribute(): ?string
+    {
+        return $this->cdl_number ? substr($this->cdl_number, -4) : null;
+    }
+
+    public function mvrReports()
+    {
+        return $this->hasMany(\App\Models\MvrReport::class);
+    }
+
+    public function onboardings()
+    {
+        return $this->hasMany(\App\Models\DriverOnboarding::class);
+    }
+
     // ------------------------------------------------------------------
-    // Filtrlar — carrier talent pool'da ishlatiladi
+    // Filters used by the carrier talent pool
     // ------------------------------------------------------------------
 
     public function scopeFilter(Builder $query, array $filters): Builder

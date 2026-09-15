@@ -124,6 +124,8 @@ export default {
                             { name: 'carrier.jobs', label: 'Job posts' },
                             { name: 'carrier.drivers', label: 'Driver pool' },
                             { name: 'conversations', label: 'Messages' },
+                            { name: 'onboarding', label: 'Onboarding' },
+                            { name: 'carrier.travel', label: 'Driver travel' },
                         ],
                     },
                     {
@@ -152,6 +154,7 @@ export default {
                         { name: 'driver.jobs', label: 'Find jobs' },
                         { name: 'driver.applications', label: 'My applications' },
                         { name: 'conversations', label: 'Messages' },
+                        { name: 'onboarding', label: 'Onboarding' },
                     ],
                 },
                 {
