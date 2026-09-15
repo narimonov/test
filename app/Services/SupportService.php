@@ -20,6 +20,7 @@ class SupportService
     /** @var TelegramBridge */
     protected $telegram;
 
+
     public function __construct(AiResponder $ai, TelegramBridge $telegram)
     {
         $this->ai = $ai;
@@ -86,14 +87,27 @@ class SupportService
         ]);
 
         $reply = $conversation->messages()->create([
-            'author_type' => Message::AUTHOR_AI,
-            'author_name' => 'Assistant',
-            'body'        => $answer['reply'],
+            'author_type'       => Message::AUTHOR_AI,
+            'author_name'       => 'Assistant',
+            'body'              => $answer['reply'],
+            'resolved_question' => $answer['resolved'],
         ]);
 
         $conversation->forceFill(['last_message_at' => now()])->save();
 
-        if (! $answer['resolved'] || $this->shouldEscalate($conversation)) {
+        if ($answer['resolved']) {
+            return ['escalated' => false, 'reply' => $reply];
+        }
+
+        /*
+         * Two ways to reach a person. Either the question needs one outright —
+         * a refund, account access, a direct ask — or the assistant has come up
+         * short several times running. Answering questions well, however many,
+         * is never a reason to fetch anyone.
+         */
+        $immediate = ! empty($answer['immediate']);
+
+        if ($immediate || $this->countUnresolved($conversation) >= (int) config('support.ai.max_turns_before_escalation', 3)) {
             $this->escalate($conversation, $user, $body);
 
             return ['escalated' => true, 'reply' => $reply];
@@ -110,16 +124,20 @@ class SupportService
 
         $conversation->forceFill(['subject' => 'Support — with an agent'])->save();
 
-        $conversation->messages()->create([
-            'author_type' => Message::AUTHOR_SYSTEM,
-            'author_name' => 'System',
-            'body'        => 'Handed over to a support agent. Replies will appear here.',
-        ]);
-
-        $this->telegram->escalate($conversation, $question, [
+        $delivered = $this->telegram->escalate($conversation, $question, [
             'name'  => $user->name,
             'email' => $user->email,
             'role'  => $user->role,
+        ]);
+
+        // Without a bot configured nobody is watching Telegram, so say what
+        // actually happens rather than promising a reply that will not come.
+        $conversation->messages()->create([
+            'author_type' => Message::AUTHOR_SYSTEM,
+            'author_name' => 'System',
+            'body'        => $delivered
+                ? 'Handed over to a support agent. Their reply will appear here.'
+                : 'Handed over to our team. It is in the support queue and someone will reply here.',
         ]);
     }
 
@@ -154,11 +172,29 @@ class SupportService
             ->all();
     }
 
-    /** Stop the assistant going in circles. */
-    protected function shouldEscalate(Conversation $conversation): bool
+    /**
+     * How many questions in a row the assistant has failed to answer, read
+     * back off its own replies. A single answered question resets the run.
+     */
+    protected function countUnresolved(Conversation $conversation): int
     {
-        $turns = $conversation->messages()->where('author_type', Message::AUTHOR_USER)->count();
+        $recent = $conversation->messages()
+            ->where('author_type', Message::AUTHOR_AI)
+            ->whereNotNull('resolved_question')
+            ->orderByDesc('id')
+            ->limit(10)
+            ->pluck('resolved_question');
 
-        return $turns >= (int) config('support.ai.max_turns_before_escalation', 3);
+        $run = 0;
+
+        foreach ($recent as $resolved) {
+            if ($resolved) {
+                break;
+            }
+
+            $run++;
+        }
+
+        return $run;
     }
 }

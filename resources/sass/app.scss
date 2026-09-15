@@ -360,6 +360,12 @@ thead th {
         color: #fff;
     }
 
+    // Alignment only. Lets a bubble sit on the right while keeping the
+    // colour that says who wrote it.
+    &.is-right {
+        margin-left: auto;
+    }
+
     &.is-ai     { background: #f4f7fb; border-color: #d7e3f0; }
     &.is-agent  { background: #fff6ec; border-color: #f0d4b4; }
     &.is-system { background: transparent; border: none; color: $steel-600; font-size: 0.8rem;

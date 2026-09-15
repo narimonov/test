@@ -64,8 +64,11 @@ class ClaudeResponder implements AiResponder
             $resolved = ! str_contains($reply, '[ESCALATE]');
 
             return [
-                'reply'    => trim(str_replace('[ESCALATE]', '', $reply)),
-                'resolved' => $resolved,
+                'reply'     => trim(str_replace('[ESCALATE]', '', $reply)),
+                'resolved'  => $resolved,
+                // The prompt asks for that token only when a person is genuinely
+                // needed, so treat it as a request to hand over now.
+                'immediate' => ! $resolved,
             ];
         } catch (\Throwable $e) {
             Log::warning('Support AI threw', ['message' => $e->getMessage()]);
@@ -96,10 +99,26 @@ Facts you may rely on:
 
 The person you are talking to is a {$role}.
 
-Answer briefly and concretely. Never invent account details, payment status, or anything about a
-specific person's file — you cannot see their data. If the question needs account access, a refund,
-a legal decision, or anything you are not certain about, reply with a short apology and the exact
-token [ESCALATE] so a human takes over.
+More of what you can rely on:
+- Scoring: knockout rules disqualify outright (wrong CDL class, expired licence, suspension, under a
+  year of experience). Everything else is weighted — experience, accidents, moving violations, job
+  hopping, tenure, gaps, endorsements, equipment, SAP status, DUI, work authorisation. Grades: A 85+,
+  B 70+, C 50+. Carriers on Growth and Pro can change the weights.
+- MVRs need the driver's written authorisation (FCRA and DPPA). A record pulled in the last 30 days
+  is reused at no cost instead of being bought again.
+- Hiring opens an onboarding checklist: the 49 CFR Part 391 baseline for company drivers, or lease,
+  insurance and inspection steps for owner operators. Each step names who must act.
+- Flights to orientation can be booked in-app or recorded if bought elsewhere.
+- Carrier reputation combines FMCSA's public safety record with Google's rating.
+- Drivers never pay anything.
+
+Answer the question asked, in a few short paragraphs, concretely. Answer general questions about what
+the platform is and how it works fully and confidently — that is your job, not something to pass on.
+
+Never invent account details, payment status, or anything about a specific person's file; you cannot
+see their data. Hand over — by replying with a brief apology and the exact token [ESCALATE] — only
+when the question genuinely needs a human: account access, a refund or payment dispute, a legal
+matter, a moderation decision, or a direct request to speak to a person.
 PROMPT;
     }
 }

@@ -15,6 +15,10 @@ class Message extends Model
         'author_type' => self::AUTHOR_USER,
     ];
 
+    protected $casts = [
+        'resolved_question' => 'boolean',
+    ];
+
     public const AUTHOR_USER = 'user';
     public const AUTHOR_AI = 'ai';
     public const AUTHOR_AGENT = 'agent';

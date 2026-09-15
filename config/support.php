@@ -15,8 +15,13 @@
 return [
 
     'ai' => [
-        // rules = built-in answers, no external call. claude = Anthropic API.
-        'driver' => env('SUPPORT_AI_DRIVER', 'rules'),
+        /*
+        | auto   = Claude when ANTHROPIC_API_KEY is set, the built-in answers
+        |          otherwise. This is what you want almost always.
+        | rules  = built-in answers only, no external call.
+        | claude = force the API.
+        */
+        'driver' => env('SUPPORT_AI_DRIVER', 'auto'),
 
         'claude' => [
             'api_key' => env('ANTHROPIC_API_KEY'),
@@ -25,7 +30,11 @@ return [
             'max_tokens' => 600,
         ],
 
-        // The assistant hands over after this many unresolved turns.
+        /*
+        | How many questions in a row the assistant may fail to answer before
+        | a person is brought in. Answered questions reset the run, so a long
+        | productive conversation never triggers a handover.
+        */
         'max_turns_before_escalation' => env('SUPPORT_AI_MAX_TURNS', 3),
     ],
 

@@ -46,13 +46,16 @@ class IntegrationServiceProvider extends ServiceProvider
 
         $this->app->singleton(AiResponder::class, function () {
             $rules = new RuleBasedResponder();
+            $driver = config('support.ai.driver');
+            $claude = config('support.ai.claude');
 
-            if (config('support.ai.driver') === 'claude') {
-                // Claude answers, and the rules answer whenever the API is unavailable.
-                return new ClaudeResponder(config('support.ai.claude'), $rules);
-            }
+            // 'auto' uses Claude as soon as a key exists, and the built-in
+            // answers until then. Claude falls back to them on any failure,
+            // so support never goes quiet because of an upstream outage.
+            $useClaude = $driver === 'claude'
+                || ($driver === 'auto' && ! empty($claude['api_key']));
 
-            return $rules;
+            return $useClaude ? new ClaudeResponder($claude, $rules) : $rules;
         });
 
         $this->app->singleton(MvrProvider::class, function () {

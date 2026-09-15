@@ -36,6 +36,7 @@ const routes = [
     // Admin
     { path: '/admin', name: 'admin.overview', component: () => import('./pages/admin/Overview.vue'), meta: { auth: true, role: 'admin' } },
     { path: '/admin/users', name: 'admin.users', component: () => import('./pages/admin/Users.vue'), meta: { auth: true, role: 'admin' } },
+    { path: '/admin/support', name: 'admin.support', component: () => import('./pages/admin/Support.vue'), meta: { auth: true, role: 'admin' } },
     { path: '/admin/reviews', name: 'admin.reviews', component: () => import('./pages/admin/Reviews.vue'), meta: { auth: true, role: 'admin' } },
     { path: '/admin/appeals', name: 'admin.appeals', component: () => import('./pages/admin/Appeals.vue'), meta: { auth: true, role: 'admin' } },
 

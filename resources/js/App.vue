@@ -102,6 +102,7 @@ export default {
                     items: [
                         { name: 'admin.overview', label: 'Overview' },
                         { name: 'admin.users', label: 'Users' },
+                        { name: 'admin.support', label: 'Support queue' },
                         { name: 'admin.reviews', label: 'Review queue' },
                         { name: 'admin.appeals', label: 'Appeals' },
                     ],

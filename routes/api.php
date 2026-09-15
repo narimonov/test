@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\Admin\AdminModerationController;
 use App\Http\Controllers\Api\Admin\AdminReviewController;
+use App\Http\Controllers\Api\Admin\AdminSupportController;
 use App\Http\Controllers\Api\Admin\AdminOverviewController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\ApplicantController;
@@ -207,6 +208,10 @@ Route::middleware(['auth:sanctum', 'not.blocked'])->group(function () {
 
         Route::get('appeals', [AdminModerationController::class, 'appeals']);
         Route::post('appeals/{appeal}/decision', [AdminModerationController::class, 'decideAppeal']);
+
+        Route::get('support', [AdminSupportController::class, 'index']);
+        Route::get('support/{conversation}', [AdminSupportController::class, 'show']);
+        Route::post('support/{conversation}/reply', [AdminSupportController::class, 'reply']);
 
         Route::get('reviews', [AdminReviewController::class, 'index']);
         Route::post('reviews/{review}/contacted', [AdminReviewController::class, 'markContacted']);
